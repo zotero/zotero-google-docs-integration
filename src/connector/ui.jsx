@@ -32,11 +32,13 @@ if(window.top) {
 }	
 if (!isTopWindow) return;
 
-let imageURL;
+let zoteroIconURL, citationsUnlinkedIconURL;
 if (Zotero.isBrowserExt) {
-	imageURL = browser.extension.getURL('images/zotero-z-16px-offline.png');
+	zoteroIconURL = browser.extension.getURL('images/zotero-z-16px-offline.png');
+	citationsUnlinkedIconURL = browser.extension.getURL('images/citations-unlinked.png');
 } else {
-	imageURL = `${safari.extension.baseURI}safari/` + 'images/zotero-new-z-16px.png';
+	zoteroIconURL = `${safari.extension.baseURI}safari/images/zotero-new-z-16px.png`;
+	citationsUnlinkedIconURL = `${safari.extension.baseURI}safari/images/citations-unlinked.png`;
 }
 
 /**
@@ -94,6 +96,17 @@ Zotero.GoogleDocs.UI = {
 			document.querySelector('.kix-appview-editor'));
 		ReactDOM.render(<Zotero.GoogleDocs.UI.PleaseWait ref={ref => Zotero.GoogleDocs.UI.pleaseWaitScreen = ref}/>,
 			Zotero.GoogleDocs.UI.pleaseWaitContainer);
+			
+		// Orphaned citation UI
+		Zotero.GoogleDocs.UI.orphanedCitationsContainer = document.createElement('div');
+		Zotero.GoogleDocs.UI.orphanedCitationsContainer.classList.add('goog-inline-block');
+		Zotero.GoogleDocs.UI.orphanedCitationsContainer.id = 'docs-zotero-orphanedCitation-container';
+		document.querySelector('.docs-titlebar-buttons').insertBefore(
+			Zotero.GoogleDocs.UI.orphanedCitationsContainer,
+			document.querySelector('#docs-titlebar-share-client-button'));
+		ReactDOM.render(<Zotero.GoogleDocs.UI.OrphanedCitations
+			ref={ref => Zotero.GoogleDocs.UI.orphanedCitations = ref}/>,
+			Zotero.GoogleDocs.UI.orphanedCitationsContainer)
 	},
 	
 	interceptDownloads: async function() {
@@ -253,7 +266,20 @@ Zotero.GoogleDocs.UI = {
 			button2Text: "",
 			message: Zotero.getString('integration_googleDocs_docxAlert', ZOTERO_CONFIG.CLIENT_NAME),
 		};
-		Zotero.Inject.confirm(options);
+		return Zotero.Inject.confirm(options);
+	},
+
+	displayOrphanedCitationAlert: async function() {
+		const options = {
+			title: Zotero.getString('general_warning'),
+			button2Text: "",
+			button3Text: Zotero.getString('general_moreInfo'),
+			message: Zotero.getString('integration_googleDocs_orphanedCitationAlert', ZOTERO_CONFIG.CLIENT_NAME),
+		};
+		let result = await Zotero.Inject.confirm(options);
+		if (result.button == 3) {
+			Zotero.Connector_Browser.openTab('https://www.zotero.org/support/kb/google_docs_citations_unlinked');
+		}
 	},
 	
 	toggleUpdatingScreen: function(display) {
@@ -780,7 +806,7 @@ Zotero.GoogleDocs.UI.LinkbubbleOverride = class extends React.Component {
 					<div className="docs-link-bubble-mime-icon goog-inline-block docs-material">
 						<div className="docs-icon goog-inline-block ">
 							<div style={{
-								backgroundImage: `url(${imageURL})`,
+								backgroundImage: `url(${zoteroIconURL})`,
 								backgroundRepeat: 'no-repeat',
 								backgroundPosition: 'center',
 								width: "100%",
@@ -834,6 +860,112 @@ Zotero.GoogleDocs.UI.PleaseWait = class extends React.Component {
 			</div>
 		)
 	}
+}
+
+
+Zotero.GoogleDocs.UI.OrphanedCitations = React.forwardRef(function(props, ref) {
+	let [open, setOpen] = React.useState(false);
+	let [citations, setCitations] = React.useState([]);
+	
+	React.useImperativeHandle(ref, () => ({
+		setCitations: function(newCitations) {
+			// Open upon first detecting orphaned citations
+			if (!citations.length && newCitations.length) setOpen(true);
+			setCitations(newCitations);
+		}
+	}));
+
+	// A bit dirty here. Injecting a hover CSS rule. The other option is to
+	// do it via background scripts, which would be a million lines of code
+	// especially since we eval-load gdocs code on browserExt.
+	const buttonID = "zotero-docs-orphaned-citations-button";
+	const hoverRule = `#${buttonID}:hover {background: rgba(0, 0, 0, .06);}`;
+	let styleElem;
+	React.useEffect(() => {
+		styleElem = document.createElementNS("http://www.w3.org/1999/xhtml", 'style');
+		document.head.appendChild(styleElem);
+		styleElem.sheet.insertRule(hoverRule);
+		return () => {
+			document.head.removeChild(styleElem);
+		}
+	}, []);
+
+	React.useEffect(() => {
+		let listener = () => open && setOpen(false);
+		document.addEventListener('click', listener, {capture: true});
+		return () => {
+			document.removeEventListener('click', listener);
+		}
+	}, [open]);
+
+	return (
+		<div
+			role={"button"}
+			id={buttonID}
+			dataTooltip="Open unlinked citation list"
+			ariaLabel="Open unlinked citation list"
+			style={{
+				borderRadius: "50%",
+				cursor: "pointer",
+				marginRight: "9px",
+				marginLeft: "-9px",
+				display: citations.length ? 'block' : 'none',
+			}}
+			onClick={() => setOpen(!open)}
+		>
+			<div className="goog-inline-block" style={{ width: "40px", height: "40px" }}>
+				<div style={{
+					backgroundImage: `url(${citationsUnlinkedIconURL})`,
+					backgroundRepeat: 'no-repeat',
+					backgroundPosition: 'center 11px',
+					width: "100%",
+					height: "100%",
+				}} />
+			</div>
+			<Zotero.GoogleDocs.UI.OrphanedCitationsList citations={citations} open={open}/>
+		</div>
+	)
+});
+
+Zotero.GoogleDocs.UI.OrphanedCitationsList = function({ citations, open }) {
+	function renderCitation(citation) {
+		return (
+			<a className="zotero-orphaned-citation" href="#"
+				onClick={() => Zotero.GoogleDocs.UI.selectText(citation.text, citation.url)}>
+				{citation.text}
+			</a>
+		);
+	}
+
+	return (
+		<div className="zotero-orphaned-citations-popover">
+			<div className="docs-bubble" style={{
+				position: "absolute",
+				right: "-140px",
+				top: "50px",
+				width: "500px",
+				minHeight: "5px",
+				zIndex: "110000",
+				display: open ? "block" : 'none',
+				textAlign: "left",
+			}}>
+				<div className="zotero-orphaned-citations-disclaimer"
+					style={{
+						whiteSpace: 'normal',
+						fontSize: "1.2em",
+						color: "#333",
+						marginBottom: "1em"
+					}}
+					dangerouslySetInnerHTML={{
+						__html: Zotero.getString('integration_googleDocs_orphanedCitationDisclaimer', ZOTERO_CONFIG.CLIENT_NAME)
+					}}
+				/>
+				<div className="zotero-orphaned-citations-list" style={{ display: "flex", flexDirection: "column" }}>
+					{citations.map(renderCitation)}
+				</div>
+			</div>
+		</div>
+	);
 }
 
 })();

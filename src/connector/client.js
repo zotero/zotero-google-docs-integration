@@ -35,6 +35,7 @@ if (!isTopWindow) return;
 Zotero.GoogleDocs = {
 	config: {
 		fieldURL: 'https://www.zotero.org/google-docs/?',
+		brokenFieldURL: 'https://www.zotero.org/google-docs/?broken=',
 		fieldKeyLength: 6,
 		citationPlaceholder: "{Updating}",
 		fieldPrefix: "Z_F",
@@ -91,7 +92,7 @@ Zotero.GoogleDocs = {
 		var client = this.lastClient || new Zotero.GoogleDocs.Client();
 		await client.init();
 		try {
-			var field = await client.cursorInField();
+			var field = await client.cursorInField(false);
 		} catch (e) {
 			if (e.message == "Handled Error") {
 				Zotero.debug('Handled Error in editField()');
@@ -119,9 +120,13 @@ Zotero.GoogleDocs.Client = function() {
 	Zotero.GoogleDocs.clients[this.id] = this;
 };
 Zotero.GoogleDocs.Client.prototype = {
+	/**
+	 * Called before each integration transaction once
+	 */
 	init: async function() {
 		this.currentFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
 		this.isInLink = Zotero.GoogleDocs.UI.isInLink();
+		this.orphanedCitationAlertShown = false;
 	},
 	
 	call: async function(request) {
@@ -256,7 +261,10 @@ Zotero.GoogleDocs.Client.prototype = {
 			return fields;
 		}
 
-		this.fields = await Zotero.GoogleDocs_API.run(this.documentID, 'getFields', [this.queued.conversion]);
+		let response = await Zotero.GoogleDocs_API.run(this.documentID, 'getFields', [this.queued.conversion]);
+		this.fields = response.fields;
+		this.orphanedCitations = response.orphanedCitations;
+		Zotero.GoogleDocs.UI.orphanedCitations.setCitations(this.orphanedCitations);
 		let i = 0;
 		for (let field of this.fields) {
 			if (field == -1) {
@@ -308,8 +316,9 @@ Zotero.GoogleDocs.Client.prototype = {
 		await Zotero.GoogleDocs.UI.waitToSaveInsertion();
 	},
 	
-	cursorInField: async function() {
+	cursorInField: async function(showOrphanedCitationAlert=true) {
 		if (!(this.currentFieldID)) return false;
+		this.isInOrphanedField = false;
 		
 		var fields = await this.getFields();
 		// The call to getFields() might change the selectedFieldID if there are duplicates
@@ -319,11 +328,19 @@ Zotero.GoogleDocs.Client.prototype = {
 				return field;
 			}
 		}
+		if (selectedFieldID.startsWith("broken=")) {
+			this.isInOrphanedField = true;
+			if (showOrphanedCitationAlert && !this.orphanedCitationAlertShown) {
+				await Zotero.GoogleDocs.UI.displayOrphanedCitationAlert();
+				this.orphanedCitationAlertShown = true;
+			}
+			return false;
+		}
 		throw new Error(`Selected field ${selectedFieldID} not returned from Docs backend`);
 	},
 	
 	canInsertField: async function() {
-		return !this.isInLink;
+		return this.isInOrphanedField || !this.isInLink;
 	},
 	
 	convert: async function(fieldIDs, fieldType, fieldNoteTypes) {
