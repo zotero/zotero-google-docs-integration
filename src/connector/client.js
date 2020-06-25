@@ -190,7 +190,13 @@ Zotero.GoogleDocs.Client.prototype = {
 	getDocumentData: async function() {
 		return Zotero.GoogleDocs_API.run(this.documentID, 'getDocumentData', Array.from(arguments));
 	},
-	
+
+	/**
+	 * This is a sneaky method where all actual calls to gdocs occur and multiple queued document
+	 * changes are performed
+	 * @param data {String} - from Zotero. Serialized doc data string
+	 * @returns {Promise}
+	 */
 	setDocumentData: async function(data) {
 		this.queued.documentData = data;
 		var keys = Object.keys(this.queued.fields); 
@@ -198,6 +204,9 @@ Zotero.GoogleDocs.Client.prototype = {
 		let count = 0;
 		while (count < keys.length || this.queued.documentData) {
 			Zotero.debug(`GDocs: Updating doc. Batch ${batchSize}, numItems: ${keys.length - count}`);
+			if (this.queued.insert) {
+				await this._insertField(this.queued.insert, false);
+			}
 			let batch = keys.slice(count, count+batchSize);
 			try {
 				await Zotero.GoogleDocs_API.run(this.documentID, 'complete', [
@@ -306,7 +315,6 @@ Zotero.GoogleDocs.Client.prototype = {
 		var id = Zotero.Utilities.randomString(Zotero.GoogleDocs.config.fieldKeyLength);
 		var field = {text: Zotero.GoogleDocs.config.citationPlaceholder, code: '{}', id, noteType};
 		this.queued.insert = field;
-		await this._insertField(field, false);
 		return field;
 	},
 
