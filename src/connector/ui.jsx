@@ -269,17 +269,22 @@ Zotero.GoogleDocs.UI = {
 		return Zotero.Inject.confirm(options);
 	},
 
+	/**
+	 * @returns {Promise<boolean>} true if citation editing should continue
+	 */
 	displayOrphanedCitationAlert: async function() {
 		const options = {
 			title: Zotero.getString('general_warning'),
 			button2Text: "",
 			button3Text: Zotero.getString('general_moreInfo'),
-			message: Zotero.getString('integration_googleDocs_orphanedCitationAlert', ZOTERO_CONFIG.CLIENT_NAME),
+			message: Zotero.getString('integration_googleDocs_orphanedCitations_alert', ZOTERO_CONFIG.CLIENT_NAME),
 		};
 		let result = await Zotero.Inject.confirm(options);
 		if (result.button == 3) {
 			Zotero.Connector_Browser.openTab('https://www.zotero.org/support/kb/google_docs_citations_unlinked');
+			return false;
 		}
+		return true;
 	},
 	
 	toggleUpdatingScreen: function(display) {

@@ -75,6 +75,20 @@ Zotero.GoogleDocs = {
 			client = new Zotero.GoogleDocs.Client();
 			await client.init();
 		}
+
+		if (command == 'addEditCitation') {
+			// Check if we're in a broken field and cancel operation if user
+			// wants clicks More Info
+			try {
+				await client.cursorInField(true);
+			} catch (e) {
+				if (e.message != "Handled Error") {
+					Zotero.logError(e);
+				}
+				return;
+			}
+		}
+
 		window.dispatchEvent(new MessageEvent('Zotero.Integration.execCommand', {
 			data: {client: {documentID: client.documentID, name: Zotero.GoogleDocs.name, id: client.id}, command}
 		}));
@@ -92,7 +106,7 @@ Zotero.GoogleDocs = {
 		var client = this.lastClient || new Zotero.GoogleDocs.Client();
 		await client.init();
 		try {
-			var field = await client.cursorInField(false);
+			var field = await client.cursorInField(true);
 		} catch (e) {
 			if (e.message == "Handled Error") {
 				Zotero.debug('Handled Error in editField()');
@@ -316,7 +330,7 @@ Zotero.GoogleDocs.Client.prototype = {
 		await Zotero.GoogleDocs.UI.waitToSaveInsertion();
 	},
 	
-	cursorInField: async function(showOrphanedCitationAlert=true) {
+	cursorInField: async function(showOrphanedCitationAlert=false) {
 		if (!(this.currentFieldID)) return false;
 		this.isInOrphanedField = false;
 		
@@ -331,7 +345,10 @@ Zotero.GoogleDocs.Client.prototype = {
 		if (selectedFieldID.startsWith("broken=")) {
 			this.isInOrphanedField = true;
 			if (showOrphanedCitationAlert && !this.orphanedCitationAlertShown) {
-				await Zotero.GoogleDocs.UI.displayOrphanedCitationAlert();
+				let result = await Zotero.GoogleDocs.UI.displayOrphanedCitationAlert();
+				if (!result) {
+					throw new Error('Handled Error');
+				}
 				this.orphanedCitationAlertShown = true;
 			}
 			return false;
