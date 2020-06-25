@@ -903,17 +903,18 @@ Zotero.GoogleDocs.UI.OrphanedCitations = React.forwardRef(function(props, ref) {
 		}
 	}, [open]);
 
-	return (
+	return ([
 		<div
 			role={"button"}
 			id={buttonID}
-			dataTooltip="Open unlinked citation list"
-			ariaLabel="Open unlinked citation list"
+			data-tooltip={Zotero.getString('integration_googleDocs_orphanedCitations_buttonTooltip')}
+			aria-label={Zotero.getString('integration_googleDocs_orphanedCitations_buttonTooltip')}
 			style={{
 				borderRadius: "50%",
 				cursor: "pointer",
 				marginRight: "9px",
 				marginLeft: "-9px",
+				maxHeight: "40px",
 				display: citations.length ? 'block' : 'none',
 			}}
 			onClick={() => setOpen(!open)}
@@ -922,14 +923,14 @@ Zotero.GoogleDocs.UI.OrphanedCitations = React.forwardRef(function(props, ref) {
 				<div style={{
 					backgroundImage: `url(${citationsUnlinkedIconURL})`,
 					backgroundRepeat: 'no-repeat',
-					backgroundPosition: 'center 11px',
+					backgroundPosition: 'center',
 					width: "100%",
 					height: "100%",
 				}} />
 			</div>
-			<Zotero.GoogleDocs.UI.OrphanedCitationsList citations={citations} open={open}/>
-		</div>
-	)
+		</div>,
+		<Zotero.GoogleDocs.UI.OrphanedCitationsList citations={citations} open={open}/>
+	])
 });
 
 Zotero.GoogleDocs.UI.OrphanedCitationsList = function({ citations, open }) {
@@ -943,31 +944,29 @@ Zotero.GoogleDocs.UI.OrphanedCitationsList = function({ citations, open }) {
 	}
 
 	return (
-		<div className="zotero-orphaned-citations-popover">
-			<div className="docs-bubble" style={{
-				position: "absolute",
-				right: "-140px",
-				top: "50px",
-				width: "500px",
-				minHeight: "5px",
-				zIndex: "110000",
-				display: open ? "block" : 'none',
-				textAlign: "left",
-			}}>
-				<div className="zotero-orphaned-citations-disclaimer"
-					style={{
-						whiteSpace: 'normal',
-						fontSize: "1.2em",
-						color: "#333",
-						marginBottom: "1em"
-					}}
-					dangerouslySetInnerHTML={{
-						__html: Zotero.getString('integration_googleDocs_orphanedCitationDisclaimer', ZOTERO_CONFIG.CLIENT_NAME)
-					}}
-				/>
-				<div className="zotero-orphaned-citations-list" style={{ display: "flex", flexDirection: "column" }}>
-					{citations.map(renderCitation)}
-				</div>
+		<div className="zotero-orphaned-citations-popover docs-bubble" style={{
+			position: "absolute",
+			right: "-140px",
+			top: "48px",
+			width: "500px",
+			minHeight: "5px",
+			zIndex: "110000",
+			display: open ? "block" : 'none',
+			textAlign: "left",
+		}}>
+			<div className="zotero-orphaned-citations-disclaimer"
+				style={{
+					whiteSpace: 'normal',
+					fontSize: "1.2em",
+					color: "#333",
+					marginBottom: "1em"
+				}}
+				dangerouslySetInnerHTML={{
+					__html: Zotero.getString('integration_googleDocs_orphanedCitations_disclaimer', ZOTERO_CONFIG.CLIENT_NAME)
+				}}
+			/>
+			<div className="zotero-orphaned-citations-list" style={{ display: "flex", flexDirection: "column" }}>
+				{citations.map(renderCitation)}
 			</div>
 		</div>
 	);
