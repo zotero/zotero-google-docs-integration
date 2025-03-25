@@ -543,6 +543,12 @@ Zotero.GoogleDocs.UI = {
 	 * @returns {Promise<void>}
 	 */
 	selectText: async function(text, url=null) {
+		// Some recent change probably in the Google Docs editor is causing user citations
+		// to become single-character length strings, most often ".". It causes the selection code
+		// to "cycle" through matches, which on long documents causes user confusion and frustration.
+		if (text.length <= 2) {
+			return;
+		}
 		this.toggleUpdatingScreen(false);
 		var openFindDialogKbEvent = {ctrlKey: true, key: 'f', keyCode: '70'};
 		if (Zotero.isMac) {
