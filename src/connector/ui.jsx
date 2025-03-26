@@ -363,7 +363,9 @@ Zotero.GoogleDocs.UI = {
 
 		this.linkbubbleOverrideRef.current.forceUpdate();
 		if (!state) {
+			const disabledTooltip = Zotero.getString('integration_googleDocs_disabledTooltip', ZOTERO_CONFIG.CLIENT_NAME);
 			this.menubutton.classList.add('goog-control-disabled');
+			this.menubutton.setAttribute('data-tooltip', disabledTooltip);
 			this._menubuttonHoverRemoveObserver = new MutationObserver(function() {
 				if (this.menubutton.classList.contains('goog-control-hover')) {
 					this.menubutton.classList.remove('goog-control-hover');
@@ -374,7 +376,10 @@ Zotero.GoogleDocs.UI = {
 			}.bind(this));
 			this._menubuttonHoverRemoveObserver.observe(this.menubutton, {attributes: true});
 			
+			// Store the original tooltip before disabling
+			this._originalButtonTooltip = this.button.getAttribute('data-tooltip');
 			this.button.classList.add('goog-toolbar-button-disabled');
+			this.button.setAttribute('data-tooltip', disabledTooltip);
 			this._buttonHoverRemoveObserver = new MutationObserver(function() {
 				if (this.button.classList.contains('goog-toolbar-button-hover')) {
 					this.button.classList.remove('goog-toolbar-button-hover');
@@ -383,7 +388,12 @@ Zotero.GoogleDocs.UI = {
 			this._buttonHoverRemoveObserver.observe(this.button, {attributes: true});
 		} else {
 			this.menubutton.classList.remove('goog-control-disabled');
+			this.menubutton.removeAttribute('data-tooltip');
 			this.button.classList.remove('goog-toolbar-button-disabled');
+			
+			// Restore the original tooltip
+			this._originalButtonTooltip && this.button.setAttribute('data-tooltip', this._originalButtonTooltip);
+			
 			if (this._menubuttonHoverRemoveObserver) {
 				this._menubuttonHoverRemoveObserver.disconnect();
 				this._buttonHoverRemoveObserver.disconnect();
