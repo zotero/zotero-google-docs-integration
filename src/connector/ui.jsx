@@ -386,6 +386,7 @@ Zotero.GoogleDocs.UI = {
 				}
 			}.bind(this));
 			this._buttonHoverRemoveObserver.observe(this.button, {attributes: true});
+			this.removeKeyboardShortcuts();
 		} else {
 			this.menubutton.classList.remove('goog-control-disabled');
 			this.menubutton.removeAttribute('data-tooltip');
@@ -399,10 +400,13 @@ Zotero.GoogleDocs.UI = {
 				this._buttonHoverRemoveObserver.disconnect();
 				delete this._menubuttonHoverRemoveObserver;
 			}
+			this.addKeyboardShortcuts();
 		}
 	},
 
 	addKeyboardShortcuts: async function() {
+		// Already added
+		if (this._removeCiteShortcut) return;
 		// The main cite shortcut
 		let modifiers = await Zotero.Prefs.getAsync('shortcuts.cite');
 
@@ -413,7 +417,7 @@ Zotero.GoogleDocs.UI = {
 			`Add/edit Zotero citation (${this.shortcut})`;
 
 		var textEventTarget = document.querySelector('.docs-texteventtarget-iframe').contentDocument;
-		Zotero.Inject.addKeyboardShortcut(Object.assign(modifiers), Zotero.GoogleDocs.editField, textEventTarget);
+		this._removeCiteShortcut = Zotero.Inject.addKeyboardShortcut(Object.assign(modifiers), Zotero.GoogleDocs.editField, textEventTarget);
 
 		// Open Zotero menu shortcut, mimicking google doc's native shortcuts
 		modifiers = {altKey: true, keyCode: 90}
@@ -422,9 +426,16 @@ Zotero.GoogleDocs.UI = {
 		} else {
 			modifiers.shiftKey = true;
 		}
-		Zotero.Inject.addKeyboardShortcut(Object.assign(modifiers), () => {
+		this._removeMenuShortcut = Zotero.Inject.addKeyboardShortcut(Object.assign(modifiers), () => {
 			this.clickElement(this.menubutton);
 		}, textEventTarget);
+	},
+
+	removeKeyboardShortcuts: function() {
+		this._removeCiteShortcut && this._removeCiteShortcut();
+		this._removeCiteShortcut = null;
+		this._removeMenuShortcut && this._removeMenuShortcut();
+		this._removeMenuShortcut = null;
 	},
 	
 	activate: async function(force, message) {
