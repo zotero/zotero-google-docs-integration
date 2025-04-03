@@ -772,15 +772,15 @@ Zotero.GoogleDocs.UI = {
 		// Setup a promise that will resolve when the sync indicator changes to spinner
 		// and then back to not-spinner, or timeout in SYNC_TIMEOUT.
 		this.docSyncedPromise = Promise.any([Zotero.Promise.delay(SYNC_TIMEOUT), new Promise((resolve) => {
-			let syncStarted = !!this._getElemBySelectors(SYNC_ICON_SELECTORS, false);
+			let syncStarted = !!document.querySelector(SYNC_ICON_SELECTORS);
 			let observer = new MutationObserver(() => {
 				if (!syncStarted) {
-					if (this._getElemBySelectors(SYNC_ICON_SELECTORS, false)) {
+					if (document.querySelector(SYNC_ICON_SELECTORS)) {
 						syncStarted = true;
 					}
 					return;
 				}
-				else if (!this._getElemBySelectors(SYNC_ICON_SELECTORS, false)) {
+				else if (!document.querySelector(SYNC_ICON_SELECTORS)) {
 					observer.disconnect();
 					resolve();
 				}
@@ -820,13 +820,13 @@ Zotero.GoogleDocs.UI.LinkInsertBubble = {
 		this._stylesheet = document.createElement('style');
 		this._stylesheet.className = 'zotero-stylesheet';
 		document.children[0].appendChild(this._stylesheet);
-		this._linkInsertBubble = Zotero.GoogleDocs.UI._getElemBySelectors('.docsLinkSmartinsertlinkBubble', false);
+		this._linkInsertBubble = document.querySelector('.docsLinkSmartinsertlinkBubble');
 		if (!this._linkInsertBubble) {
 			// Link insert popup does not exist in the DOM until the user (or Zotero) opens
 			// it for the first time, so we wait for that to happen
 			this._linkInsertBubblePromise = new Promise((resolve) => {
 				let observer = new MutationObserver(() => {
-					this._linkInsertBubble = Zotero.GoogleDocs.UI._getElemBySelectors('.docsLinkSmartinsertlinkBubble', false);
+					this._linkInsertBubble = document.querySelector('.docsLinkSmartinsertlinkBubble');
 					if (this._linkInsertBubble) {
 						observer.disconnect();
 						resolve(this._linkInsertBubble);
