@@ -55,7 +55,8 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 	call: async function(request) {
 		var method = request.command.split('.')[1];
 		var args = Array.from(request.arguments);
-		var docID = args.splice(0, 1);
+		// Splicing off the docID that we don't need to pass as an arg to the method
+		var _docID = args.splice(0, 1);
 		var result;
 		try {
 			result = await this[method].apply(this, args);

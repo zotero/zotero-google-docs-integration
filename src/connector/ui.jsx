@@ -41,7 +41,7 @@ const URL_INPUT_SELECTORS = ['.docs-link-urlinput-url', '.docs-link-searchinput-
 	'.appsElementsLinkInsertionLinkSearchInput input'];
 const SYNC_ICON_SELECTORS = ['.docs-icon-sync', '.docs-sync-20'];
 const SYNC_TIMEOUT = 10e3;
-
+const WARN_PAGE_COUNT = 100;
 /**
  * A class that hacks into the Google Docs editor UI to allow performing various actions that should
  * be properly done using AppsScript if our script was document-bound, but it is not.
@@ -52,6 +52,7 @@ Zotero.GoogleDocs.UI = {
 	inLink: false,
 	enabled: true,
 	isUpdating: false,
+	hasCheckedLargeDoc: false,
 	docSyncedPromise: Zotero.Promise.resolve(),
 
 	init: async function () {
@@ -803,9 +804,80 @@ Zotero.GoogleDocs.UI = {
 			let elem = document.querySelector(selector);
 			if (elem) return elem;
 		}
-		if (!throwError) return;
+		let error = new Error(`Google Docs UI has changed. Trying to retrieve ${JSON.stringify(selectors)}`);
+		if (!throwError) {
+			Zotero.logError(error);
+			return;
+		}
 		Zotero.GoogleDocs.UI.displayAlert('Google Docs UI has changed. Please submit a <a href="https://www.zotero.org/support/reporting_problems">Report ID</a> from the Zotero Connector on the <a href="https://forums.zotero.org">Zotero Forums</a>.')
-		throw new Error(`Google Docs UI has changed. Trying to retrieve ${JSON.stringify(selectors)}`);
+		throw error;
+	},
+
+	/**
+	 * Check if document is over WARN_PAGE_COUNT (100) pages and warn user if it is
+	 * @param {string} docId - The Google Docs document ID
+	 * @returns {Promise<boolean>} true if user wants to continue, false if they want to cancel
+	 */
+	warnIfLargeDoc: async function(docId) {
+		// Only check once per page load
+		if (this.hasCheckedLargeDoc) {
+			return true;
+		}
+		this.hasCheckedLargeDoc = true;
+
+		// Check if we've been told not to warn for this document
+		let noWarnDocs = [];
+		try {
+			noWarnDocs = await Zotero.Prefs.getAsync('googleDocs.noWarnLargeDoc');
+		} catch (e) {}
+		if (noWarnDocs.includes(docId)) {
+			return true;
+		}
+
+		let numPages = await this.getNumPages();
+		if (numPages <= WARN_PAGE_COUNT) return true;
+
+		const options = {
+			title: Zotero.getString('general_warning'),
+			button1Text: Zotero.getString('general_continue'),
+			button2Text: Zotero.getString('general_cancel'),
+			button3Text: Zotero.getString('general_dontWarnAgain'),
+			message: Zotero.getString('integration_googleDocs_largeDoc', [WARN_PAGE_COUNT, ZOTERO_CONFIG.CLIENT_NAME])
+		};
+
+		let result = await Zotero.Inject.confirm(options);
+		
+		// If user clicked "Don't Warn Again", add this doc ID to preferences
+		if (result.button === 3) {
+			noWarnDocs.push(docId);
+			Zotero.Prefs.set('googleDocs.noWarnLargeDoc', noWarnDocs);
+		}
+		
+		return result.button !== 2;
+	},
+
+	/**
+	 * Get the number of pages in the document by opening the document metrics dialog
+	 * @returns {Promise<number>} Number of pages
+	 */
+	getNumPages: async function() {
+		// Open document metrics dialog with Ctrl/Cmd+Shift+C
+		let modifiers = {shiftKey: true, keyCode: 67}; // 67 is 'C'
+		if (Zotero.isMac) {
+			modifiers.metaKey = true;
+		} else {
+			modifiers.ctrlKey = true;
+		}
+		await this.sendKeyboardEvent(modifiers);
+
+		// Wait for dialog to appear and get page count
+		let pageCountElem = this._getElemBySelectors('.documentMetricsDialogRow.documentMetricsDialogValues', false);
+
+		let dialogElem = pageCountElem.closest('body > div');
+		// Close dialog by clicking the close button
+		await this.clickElement(dialogElem.querySelector('button'));
+
+		return parseInt(pageCountElem.textContent);
 	}
 }
 

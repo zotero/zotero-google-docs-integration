@@ -85,6 +85,11 @@ Zotero.GoogleDocs = {
 		if (!client) {
 			client = new Zotero.GoogleDocs.Client();
 			await client.init();
+			const shouldContinue = await Zotero.GoogleDocs.UI.warnIfLargeDoc(client.documentID);
+			if (!shouldContinue) {
+				Zotero.debug('User cancelled the request in the large document warning');
+				return;
+			}
 		}
 
 		if (command == 'addEditCitation') {
@@ -116,6 +121,11 @@ Zotero.GoogleDocs = {
 		// Use the last client with a cached field list to speed up the cursorInField() lookup
 		var client = this.lastClient || new Zotero.GoogleDocs.Client();
 		await client.init();
+		const shouldContinue = await Zotero.GoogleDocs.UI.warnIfLargeDoc(client.documentID);
+		if (!shouldContinue) {
+			Zotero.debug('User cancelled the request in the large document warning');
+			return;
+		}
 		try {
 			var field = await client.cursorInField(true);
 		} catch (e) {
