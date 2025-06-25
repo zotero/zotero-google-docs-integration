@@ -1039,7 +1039,7 @@ Zotero.GoogleDocs.UI.Menu = class extends React.Component {
 		super(props);
 		this.state = {
 			open: Zotero.GoogleDocs.UI.menubutton.classList.contains('goog-control-open'),
-			displayAddNoteButton: false,
+			displayAddAnnotationButton: false,
 			displayCitationExplorerOption: false,
 			highlightedItem: -1
 		}
@@ -1052,9 +1052,9 @@ Zotero.GoogleDocs.UI.Menu = class extends React.Component {
 				if (mutation.attributeName != 'class' ||
 					mutation.target.classList.contains('goog-control-open') == this.state.open) continue;
 				let open = mutation.target.classList.contains('goog-control-open');
-				let displayAddNoteButton = await Zotero.Connector.getPref('googleDocsAddNoteEnabled');
+				let displayAddAnnotationButton = await Zotero.Connector.getPref('googleDocsAddAnnotationEnabled');
 				let displayCitationExplorerOption = await Zotero.Connector.getPref('googleDocsCitationExplorerEnabled');
-				this.setState({ open, displayAddNoteButton, displayCitationExplorerOption, highlightedItem: -1 });
+				this.setState({ open, displayAddAnnotationButton, displayCitationExplorerOption, highlightedItem: -1 });
 			}
 		}.bind(this));
 		this.observer.observe(Zotero.GoogleDocs.UI.menubutton, {attributes: true});
@@ -1116,11 +1116,12 @@ Zotero.GoogleDocs.UI.Menu = class extends React.Component {
 			<Zotero.GoogleDocs.UI.Menu.Item label="Add/edit citation..." shortcutKey='c' activate={this.props.execCommand.bind(this, 'addEditCitation', null)} accel={Zotero.GoogleDocs.UI.shortcut} />,
 		]
 		
-		if (this.state.displayAddNoteButton) {
-			this._items.push(<Zotero.GoogleDocs.UI.Menu.Item label="Add note..." shortcutKey='n' activate={this.props.execCommand.bind(this, 'addNote', null)} />);
+		if (this.state.displayAddAnnotationButton) {
+			this._items.push(<Zotero.GoogleDocs.UI.Menu.Item label="Add annotation..." shortcutKey='a' activate={this.props.execCommand.bind(this, 'addAnnotation', null)} />);
 		}
 
 		this._items.push(
+			<Zotero.GoogleDocs.UI.Menu.Item label="Add note..." shortcutKey='n' activate={this.props.execCommand.bind(this, 'addNote', null)} />,
 			<Zotero.GoogleDocs.UI.Menu.Item label="Add/edit bibliography" shortcutKey='b' activate={this.props.execCommand.bind(this, 'addEditBibliography', null)} />,
 		);
 		
