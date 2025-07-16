@@ -60,9 +60,9 @@ Zotero.GoogleDocs = {
 
 	init: async function() {
 		if (!await Zotero.Prefs.getAsync('integration.googleDocs.enabled')) return;
-		if (!await Zotero.Prefs.getAsync('integration.googleDocs.useGoogleDocsAPI')) {
-			Zotero.GoogleDocs.Client = Zotero.GoogleDocs.ClientAppsScript;
-		}
+		
+		await this.initClient();
+		
 		await Zotero.Inject.loadReactComponents();
 		if (Zotero.isBrowserExt) {
 			await Zotero.Connector_Browser.injectScripts(['zotero-google-docs-integration/ui.js']);
@@ -76,6 +76,30 @@ Zotero.GoogleDocs = {
 			}
 			client.call.apply(client, e.data.args);
 		});
+	},
+
+	initClient: async function(reinit=false) {
+		if (reinit) {
+			delete this.lastClient;
+		}
+		// Check if we should use ClientAppsScript based on reportTranslationFailure preference
+		// and server-side configuration
+		const forceDisableV2API = await Zotero.Prefs.getAsync('integration.googleDocs.forceDisableV2API');
+		let useV2API = !forceDisableV2API && await Zotero.Prefs.getAsync('integration.googleDocs.useV2API');
+		if (!forceDisableV2API && await Zotero.Prefs.getAsync('reportTranslationFailure')) {
+			try {
+				let xhr = await Zotero.HTTP.request('GET', ZOTERO_CONFIG.SETTINGS_URL);
+				let response = JSON.parse(xhr.responseText);
+				useV2API = response.gdocs_version === 2;
+			} catch (e) {
+				Zotero.debug('Failed to check repo if isGoogleDocsV2Enabled: ' + e.message);
+			}
+		}
+		
+		Zotero.debug(useV2API ? 'Using V2 API' : 'Using ClientAppsScript');
+		if (!useV2API) {
+			Zotero.GoogleDocs.Client = Zotero.GoogleDocs.ClientAppsScript;
+		}
 	},
 
 	execCommand: async (command, client, showOrphanedCitationAlert=true) => {
@@ -155,6 +179,10 @@ Zotero.GoogleDocs = {
 	},
 };
 	
+// Don't autoinit on test pages
+const isTestPage = Zotero.isBrowserExt && window.location.href.startsWith(browser.runtime.getURL('test'));
+if (isTestPage) return;
+
 if (document.readyState !== "complete") {
 	window.addEventListener("load", function(e) {
 		if (e.target !== document) return;

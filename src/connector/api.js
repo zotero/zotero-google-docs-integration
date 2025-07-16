@@ -271,11 +271,32 @@ Zotero.GoogleDocs.API = {
 				{headers, timeout: 60000});
 		} catch (e) {
 			if (e.status == 403) {
-					this.resetAuth();
-					throw new Error(`${e.status}: Google Docs Authorization failed. Try again.\n${e.responseText}`);
-				} else {
-					throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
+				this.resetAuth();
+				throw new Error(`${e.status}: Google Docs Authorization failed. Try again.\n${e.responseText}`);
+			} else if (e.status == 500) {
+				// Report 500 errors to the repository
+				try {
+					var parts = {
+						error: "true",
+						errorData: "googleDocsV2APIError",
+						diagnostic: await Zotero.Errors.getSystemInfo()
+					};
+					
+					var body = '';
+					for (var key in parts) {
+						body += key + '=' + encodeURIComponent(parts[key]) + '&';
+					}
+					body = body.substr(0, body.length - 1);
+					let reportHeaders = {'Content-Type': 'application/x-www-form-urlencoded'};
+					let options = {body, headers: reportHeaders};
+					await Zotero.HTTP.request("POST", ZOTERO_CONFIG.REPOSITORY_URL + "report", options);
+				} catch (reportError) {
+					Zotero.debug('Failed to report Google Docs API error: ' + reportError.message);
 				}
+				throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
+			} else {
+				throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
+			}
 		}
 		
 		let document = JSON.parse(xhr.responseText);
