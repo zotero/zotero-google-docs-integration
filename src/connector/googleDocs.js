@@ -88,7 +88,7 @@ Zotero.GoogleDocs = {
 		let useV2API = !forceDisableV2API && await Zotero.Prefs.getAsync('integration.googleDocs.useV2API');
 		if (!forceDisableV2API && await Zotero.Prefs.getAsync('reportTranslationFailure')) {
 			try {
-				let xhr = await Zotero.HTTP.request('GET', ZOTERO_CONFIG.SETTINGS_URL);
+				let xhr = await Zotero.HTTP.request('GET', ZOTERO_CONFIG.SETTINGS_URL, { headers: { "Zotero-Connector-Version": Zotero.version }});
 				let response = JSON.parse(xhr.responseText);
 				useV2API = response.gdocs_version === 2;
 			} catch (e) {
