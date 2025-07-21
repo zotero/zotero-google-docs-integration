@@ -33,6 +33,7 @@ Zotero.GoogleDocs.API = {
 	authDeferred: null,
 	authCredentials: {},
 	apiVersion: 6,
+	V2BrokenDocsById: {},
 	
 	init: async function() {
 		this.authCredentials = await Zotero.Utilities.Connector.createMV3PersistentObject('googleDocsAuthCredentials')
@@ -269,6 +270,8 @@ Zotero.GoogleDocs.API = {
 		try {
 			var xhr = await Zotero.HTTP.request('GET', `https://docs.googleapis.com/v1/documents/${docID}?includeTabsContent=true`,
 				{headers, timeout: 60000});
+
+			delete Zotero.GoogleDocs.API.V2BrokenDocsById[docID];
 		} catch (e) {
 			if (e.status == 403) {
 				this.resetAuth();
@@ -276,9 +279,16 @@ Zotero.GoogleDocs.API = {
 			} else if (e.status == 500) {
 				// Report 500 errors to the repository
 				try {
+					Zotero.GoogleDocs.API.V2BrokenDocsById[docID] = (Zotero.GoogleDocs.API.V2BrokenDocsById[docID] || 0) + 1;
+					Zotero.debug(`Reporting Google Docs API error for document ${docID}. Count: ${Zotero.GoogleDocs.API.V2BrokenDocsById[docID]}`);
+					// Use SHA-256 to hash the document ID to avoid leaking the document ID
+					// But so that we can track the number of errors for the same document
+					// Since users may be working on multiple docs at once
+					const hashDocID = await this._sha256(docID);
 					var parts = {
 						error: "true",
 						errorData: "googleDocsV2APIError",
+						extraData: JSON.stringify({ count: Zotero.GoogleDocs.API.V2BrokenDocsById[docID], docID: hashDocID }),
 						diagnostic: await Zotero.Errors.getSystemInfo()
 					};
 					
@@ -327,6 +337,14 @@ Zotero.GoogleDocs.API = {
 				object[key][k].tabId = tabId;
 			}
 		}
+	},
+
+	_sha256: async function(str) {
+		const arrayBuffer = new TextEncoder().encode(str); // encode as (utf-8) Uint8Array
+		const hashBuffer = await globalThis.crypto.subtle.digest("SHA-256", arrayBuffer); // hash the message
+		const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
+		const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join(""); // convert bytes to hex string
+		return hashHex;
 	},
 
 	batchUpdateDocument: async function (docId, tabId=null, body) {

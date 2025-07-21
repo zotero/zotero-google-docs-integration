@@ -24,7 +24,7 @@
 */
 (function() {
 
-Zotero.GoogleDocs.Client = function(docId=null) {
+Zotero.GoogleDocs.ClientV2 = Zotero.GoogleDocs.Client = function(docId=null) {
 	this.documentId = docId || document.location.href.match(/https:\/\/docs.google.com\/document\/d\/([^/]*)/)[1];
 	this.tabID = new URL(document.location.href).searchParams.get('tab');
 	this.id = Zotero.Utilities.randomString();
@@ -72,10 +72,6 @@ Zotero.GoogleDocs.Client.prototype = {
 			else if (e.message.startsWith('500: Google Docs request failed')) {
 				Zotero.debug(`500 error in ${request.command}. Switching to Apps Script`);
 				Zotero.logError(e);
-				// Do not try to use V2 API again
-				await Zotero.Prefs.set('integration.googleDocs.forceDisableV2API', true);
-				// Switch Zotero.GoogleDocs.Client to V1 (ClientAppsScript)
-				await Zotero.GoogleDocs.initClient(true);
 				let client = new Zotero.GoogleDocs.ClientAppsScript();
 				await client.init();
 				return client.call(request);

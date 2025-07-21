@@ -84,9 +84,8 @@ Zotero.GoogleDocs = {
 		}
 		// Check if we should use ClientAppsScript based on reportTranslationFailure preference
 		// and server-side configuration
-		const forceDisableV2API = await Zotero.Prefs.getAsync('integration.googleDocs.forceDisableV2API');
-		let useV2API = !forceDisableV2API && await Zotero.Prefs.getAsync('integration.googleDocs.useV2API');
-		if (!forceDisableV2API && await Zotero.Prefs.getAsync('reportTranslationFailure')) {
+		let useV2API = await Zotero.Prefs.getAsync('integration.googleDocs.useV2API');
+		if (await Zotero.Prefs.getAsync('reportTranslationFailure')) {
 			try {
 				let xhr = await Zotero.HTTP.request('GET', ZOTERO_CONFIG.SETTINGS_URL, { headers: { "Zotero-Connector-Version": Zotero.version }});
 				let response = JSON.parse(xhr.responseText);
