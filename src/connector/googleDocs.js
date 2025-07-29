@@ -76,6 +76,9 @@ Zotero.GoogleDocs = {
 			}
 			client.call.apply(client, e.data.args);
 		});
+		
+		// Start monitoring for tab changes
+		this.monitorTabChanges();
 	},
 
 	initClient: async function(reinit=false) {
@@ -98,6 +101,7 @@ Zotero.GoogleDocs = {
 		Zotero.debug(useV2API ? 'Using V2 API' : 'Using ClientAppsScript');
 		if (!useV2API) {
 			Zotero.GoogleDocs.Client = Zotero.GoogleDocs.ClientAppsScript;
+			delete Zotero.GoogleDocs.lastClient;
 		}
 	},
 
@@ -162,12 +166,7 @@ Zotero.GoogleDocs = {
 		}
 		// Remove lastClient fields to ensure execCommand calls receive fresh fields
 		if (this.lastClient) {
-			if (this.lastClient.resetGoogleDocument) {
-				this.lastClient.resetGoogleDocument();
-			}
-			else {
-				delete this.lastClient.fields;
-			}
+			this.lastClient.reset();
 		}
 		
 		if (field && field.code.indexOf("BIBL") == 0) {
@@ -176,6 +175,53 @@ Zotero.GoogleDocs = {
 			return Zotero.GoogleDocs.execCommand("addEditCitation", client, false);
 		}
 	},
+	
+	monitorTabChanges: function() {
+		// Store the current tab ID
+		this.currentTabId = this.getTabId();
+		
+		// Check for tab changes when location changes
+		const checkTabChange = () => {
+			const newTabId = this.getTabId();
+			if (this.currentTabId !== newTabId) {
+				Zotero.debug(`Google Docs tab changed from ${this.currentTabId} to ${newTabId}`);
+				this.currentTabId = newTabId;
+				
+				// Reset the last client when tab changes
+				if (this.lastClient) {
+					this.lastClient.reset();
+				}
+			}
+		};
+		
+		// Override history methods to catch programmatic navigation
+		(() => {
+			let oldPushState = history.pushState;
+			history.pushState = function pushState() {
+				let ret = oldPushState.apply(this, arguments);
+				window.dispatchEvent(new Event('locationchange'));
+				return ret;
+			};
+
+			let oldReplaceState = history.replaceState;
+			history.replaceState = function replaceState() {
+				let ret = oldReplaceState.apply(this, arguments);
+				window.dispatchEvent(new Event('locationchange'));
+				return ret;
+			};
+
+			window.addEventListener('popstate', () => {
+				window.dispatchEvent(new Event('locationchange'));
+			});
+		})();
+		
+		// Listen for our custom locationchange event
+		window.addEventListener('locationchange', checkTabChange);
+	},
+	
+	getTabId: function () {
+		return new URL(document.location.href).searchParams.get('tab') || "";
+	}
 };
 	
 // Don't autoinit on test pages

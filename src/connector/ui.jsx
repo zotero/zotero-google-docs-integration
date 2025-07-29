@@ -261,14 +261,14 @@ Zotero.GoogleDocs.UI = {
 				Zotero.GoogleDocs.UI.toggleUpdatingScreen(true);
 				await this.waitToSaveInsertion();
 				let docID = document.location.href.match(/https:\/\/docs.google.com\/document\/d\/([^/]*)/)[1];
-				let tabID = new URL(document.location.href).searchParams.get('tab');
+				let tabId = new URL(document.location.href).searchParams.get('tab');
 				let orphanedCitations;
 				if (Zotero.GoogleDocs.Client.isV2) {
 					let doc = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(docID, this.tabId));
 					await doc.addPastedRanges(linksToRanges);
 					orphanedCitations = doc.orphanedCitations;
 				} else {
-					let response = await Zotero.GoogleDocs_API.run({docID, tabID}, 'addPastedRanges', [linksToRanges]);
+					let response = await Zotero.GoogleDocs_API.run({docID, tabId}, 'addPastedRanges', [linksToRanges]);
 					orphanedCitations = response.orphanedCitations;
 				}
 				if (orphanedCitations && orphanedCitations.length) {

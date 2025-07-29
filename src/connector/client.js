@@ -26,7 +26,6 @@
 
 Zotero.GoogleDocs.ClientV2 = Zotero.GoogleDocs.Client = function(docId=null) {
 	this.documentId = docId || document.location.href.match(/https:\/\/docs.google.com\/document\/d\/([^/]*)/)[1];
-	this.tabID = new URL(document.location.href).searchParams.get('tab');
 	this.id = Zotero.Utilities.randomString();
 	
 	this._fields = null;
@@ -35,6 +34,10 @@ Zotero.GoogleDocs.ClientV2 = Zotero.GoogleDocs.Client = function(docId=null) {
 };
 Zotero.GoogleDocs.Client.isV2 = true;
 Zotero.GoogleDocs.Client.prototype = {
+	get tabId() {
+		return Zotero.GoogleDocs.getTabId();
+	},
+
 	/**
 	 * Called before each integration transaction once
 	 */
@@ -98,7 +101,7 @@ Zotero.GoogleDocs.Client.prototype = {
 	getActiveDocument: async function() {
 		Zotero.GoogleDocs.UI.toggleUpdatingScreen(true);
 		return {
-			documentId: this.documentId,
+			documentId: this.documentId + this.tabId,
 			outputFormat: 'html',
 			supportedNotes: ['footnotes'],
 			supportsImportExport: true,
@@ -115,7 +118,7 @@ Zotero.GoogleDocs.Client.prototype = {
 		return this._doc;
 	},
 	
-	resetGoogleDocument: function() {
+	reset: function() {
 		this._doc = this._fields = null;
 	},
 	
@@ -204,7 +207,7 @@ Zotero.GoogleDocs.Client.prototype = {
 		await Zotero.GoogleDocs.UI.writeText(text);
 		await Zotero.GoogleDocs.UI.waitToSaveInsertion();
 		// Need to refetch google doc after insertion
-		this.resetGoogleDocument();
+		this.reset();
 	},	
 	
 	insertField: async function(fieldType, noteType) {
@@ -219,7 +222,7 @@ Zotero.GoogleDocs.Client.prototype = {
 		this.queued.insert.push(field);
 		await this._insertField(field);
 		// Need to refetch google doc after insertion
-		this.resetGoogleDocument();
+		this.reset();
 		return field;
 	},
 
@@ -241,7 +244,7 @@ Zotero.GoogleDocs.Client.prototype = {
 	convertPlaceholdersToFields: async function(placeholderIDs, noteType) {
 		const doc = await this.getGoogleDocument();
 		let response = await doc.placeholdersToFields(placeholderIDs, noteType);
-		this.resetGoogleDocument();
+		this.reset();
 		return response;
 	},
 
@@ -288,14 +291,14 @@ Zotero.GoogleDocs.Client.prototype = {
 			} else {
 				await doc.footnotesToInline(fieldIDs);
 			}
-			this.resetGoogleDocument();
+			this.reset();
 		}
 	},
 
 	importDocument: async function() {
 		const doc = await this.getGoogleDocument();
 		let result = await doc.importDocument(...arguments);
-		this.resetGoogleDocument();
+		this.reset();
 		return result;
 	},
 
@@ -303,7 +306,7 @@ Zotero.GoogleDocs.Client.prototype = {
 		this._documentExport = true;
 		const doc = await this.getGoogleDocument();
 		await doc.exportDocument(...arguments);
-		this.resetGoogleDocument();
+		this.reset();
 		Zotero.GoogleDocs.downloadInterceptBlocked = true;
 	},
 	

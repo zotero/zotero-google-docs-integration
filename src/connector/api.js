@@ -264,7 +264,7 @@ Zotero.GoogleDocs.API = {
 		Zotero.Connector_Browser.openTab('https://www.zotero.org/support/google_docs#authorization');
 	},
 
-	getDocument: async function (docID, tabID=null) {
+	getDocument: async function (docID, tabId=null) {
 		var headers = await this.getAuthHeaders();
 		headers["Content-Type"] = "application/json";
 		try {
@@ -313,10 +313,10 @@ Zotero.GoogleDocs.API = {
 		if (!document.tabs) return document;
 		for (let tab of document.tabs) {
 			// Return first tab if not specified
-			if (tabID === null || tab.tabProperties.tabId == tabID) {
+			if (tabId === null || tab.tabProperties.tabId == tabId) {
 				let documentTab = tab.documentTab;
 				documentTab.documentId = docID;
-				documentTab.tabId = tabID;
+				documentTab.tabId = tabId;
 				return documentTab;
 			}
 		}
@@ -326,7 +326,7 @@ Zotero.GoogleDocs.API = {
 	_addTabDataToObject(object, tabId) {
 		const key = Object.keys(object)[0];
 		if (TABS_CRITERIA_METHODS.has(key)) {
-			object.tabsCriteria = { tabIds: [tabId] }
+			object[key].tabsCriteria = { tabIds: [tabId] }
 			return;
 		}
 		else if (TAB_ID_METHODS.has(key)) {

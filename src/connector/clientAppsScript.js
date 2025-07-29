@@ -26,12 +26,15 @@
 
 Zotero.GoogleDocs.ClientAppsScript = function() {
 	this.documentID = document.location.href.match(/https:\/\/docs.google.com\/document\/d\/([^/]*)/)[1];
-	this.tabID = new URL(document.location.href).searchParams.get('tab');
 	this.id = Zotero.Utilities.randomString();
 	this.fields = null;
 	Zotero.GoogleDocs.clients[this.id] = this;
 };
 Zotero.GoogleDocs.ClientAppsScript.prototype = {
+	get tabId() {
+		return Zotero.GoogleDocs.getTabId();
+	},
+
 	/**
 	 * Called before each integration transaction once
 	 */
@@ -50,6 +53,10 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 			documentData: null,
 			bibliographyStyle: null
 		};
+	},
+
+	reset: async function() {
+		this.fields = null;
 	},
 
 	call: async function(request) {
@@ -83,7 +90,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 	},
 	
 	runAppsScript(fnName, args) {
-		return Zotero.GoogleDocs_API.run({docID: this.documentID, tabID: this.tabID}, fnName, args);
+		return Zotero.GoogleDocs_API.run({docID: this.documentID, tabID: this.tabId}, fnName, args);
 	},
 
 	getDocument: async function() {
@@ -93,7 +100,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 	getActiveDocument: async function() {
 		Zotero.GoogleDocs.UI.toggleUpdatingScreen(true);
 		return {
-			documentID: this.documentID,
+			documentID: this.documentID + this.tabId,
 			outputFormat: 'html',
 			supportedNotes: ['footnotes'],
 			supportsImportExport: true,
@@ -275,7 +282,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 	},
 
 	convertPlaceholdersToFields: async function(placeholderIDs, noteType) {
-		let document = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(this.documentID, this.tabID));
+		let document = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(this.documentID, this.tabId));
 		let links = document.getLinks();
 
 		let placeholders = [];
@@ -318,7 +325,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 				});
 			}
 			requestBody.requests = requests;
-			let response = await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabID, requestBody);
+			let response = await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabId, requestBody);
 
 			// Reinsert placeholders in the inserted footnotes
 			requestBody = {};
@@ -352,7 +359,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 				});
 			});
 			requestBody.requests = requests;
-			await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabID, requestBody);
+			await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabId, requestBody);
 		} else {
 			for (let placeholder of placeholders) {
 				requests.push({
@@ -385,7 +392,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 				}
 			}
 			requestBody.requests = requests;
-			await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabID, requestBody);
+			await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabId, requestBody);
 		}
 		// Reverse to sort in order of appearance, to make sure getFields returns inserted fields
 		// in the correct order 
@@ -446,7 +453,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 			// Note/intext conversions
 			if (fieldNoteTypes[0] > 0) {
 				fieldIDs = new Set(fieldIDs);
-				let document = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(this.documentID, this.tabID));
+				let document = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(this.documentID, this.tabId));
 				let links = document.getLinks()
 					.filter((link) => {
 						if (!link.url.startsWith(Zotero.GoogleDocs.config.fieldURL)) return false;
@@ -478,7 +485,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 					});
 				}
 				requestBody.requests = requests;
-				let response = await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabID, requestBody);
+				let response = await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabId, requestBody);
 
 				// Reinsert placeholders in the inserted footnotes
 				requestBody = {};
@@ -512,7 +519,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 					});
 				});
 				requestBody.requests = requests;
-				await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabID, requestBody);
+				await Zotero.GoogleDocs_API.batchUpdateDocument(this.documentID, this.tabId, requestBody);
 			} else {
 				// To in-text conversions client-side are impossible, because there is no obvious way
 				// to make the cursor jump from the footnote section to its corresponding footnote.
