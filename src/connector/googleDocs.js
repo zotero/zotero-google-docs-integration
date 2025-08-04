@@ -160,6 +160,14 @@ Zotero.GoogleDocs = {
 				Zotero.debug('Handled Error in editField()');
 				return;
 			}
+			else if (client.isV2 && e.message.startsWith('500: Google Docs request failed')) {
+				Zotero.debug(`500 error in editField(). Switching to Apps Script`);
+				Zotero.logError(e);
+				// Switch over to ClientAppsScript if 500 error here.
+				this.lastClient = new Zotero.GoogleDocs.ClientAppsScript();
+				await client.init();
+				return Zotero.GoogleDocs.editField();
+			}
 			Zotero.debug(`Exception in editField()`);
 			Zotero.logError(e);
 			return client.displayAlert(e.message, 0, 0);

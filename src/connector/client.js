@@ -34,6 +34,8 @@ Zotero.GoogleDocs.ClientV2 = Zotero.GoogleDocs.Client = function(docId=null) {
 };
 Zotero.GoogleDocs.Client.isV2 = true;
 Zotero.GoogleDocs.Client.prototype = {
+	isV2: true,
+	
 	get tabId() {
 		return Zotero.GoogleDocs.getTabId();
 	},
