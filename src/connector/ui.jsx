@@ -264,9 +264,16 @@ Zotero.GoogleDocs.UI = {
 				let tabId = new URL(document.location.href).searchParams.get('tab');
 				let orphanedCitations;
 				if (Zotero.GoogleDocs.Client.isV2) {
-					let doc = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(docID, this.tabId));
-					await doc.addPastedRanges(linksToRanges);
-					orphanedCitations = doc.orphanedCitations;
+					try {
+						let doc = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(docID, this.tabId));
+						await doc.addPastedRanges(linksToRanges);
+						orphanedCitations = doc.orphanedCitations;
+					}
+					catch (e) {
+						Zotero.logError(e);
+						let response = await Zotero.GoogleDocs_API.run({docID, tabId}, 'addPastedRanges', [linksToRanges]);
+						orphanedCitations = response.orphanedCitations;
+					}
 				} else {
 					let response = await Zotero.GoogleDocs_API.run({docID, tabId}, 'addPastedRanges', [linksToRanges]);
 					orphanedCitations = response.orphanedCitations;
