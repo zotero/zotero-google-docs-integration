@@ -879,12 +879,27 @@ Zotero.GoogleDocs.UI = {
 
 		// Wait for dialog to appear and get page count
 		let pageCountElem = this._getElemBySelectors('.documentMetricsDialogRow.documentMetricsDialogValues', false);
+		if (!pageCountElem) return 1;
+		let pageCount = parseInt(pageCountElem.textContent);
+		if (isNaN(pageCount)) {
+			Zotero.logError(new Error(`Google Docs UI has changed. Trying to retrieve page count.`));
+			return 1;
+		}
+		
+		let tbodyElem = pageCountElem.closest('tbody');
+		if (!tbodyElem) return 1;
+		
+		// If the word count table has only 3 rows, it means it's a pageless window and the
+		// first row is not "Pages" but "Words". In that case we assume 400 words is one page.
+		if (tbodyElem.children.length < 4) {
+			pageCount = pageCount / 400;
+		}
 
 		let dialogElem = pageCountElem.closest('body > div');
 		// Close dialog by clicking the close button
 		await this.clickElement(dialogElem.querySelector('button'));
 
-		return parseInt(pageCountElem.textContent);
+		return pageCount;
 	}
 }
 
