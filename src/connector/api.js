@@ -275,7 +275,8 @@ Zotero.GoogleDocs.API = {
 		} catch (e) {
 			if (e.status == 403) {
 				this.resetAuth();
-				throw new Error(`${e.status}: Google Docs Authorization failed. Try again.\n${e.responseText}`);
+				this.displayWrongAccountPrompt();
+				throw new Error('Handled Error');
 			} else if (e.status == 500) {
 				// Report 500 errors to the repository
 				try {
@@ -370,7 +371,8 @@ Zotero.GoogleDocs.API = {
 		} catch (e) {
 			if (e.status == 403) {
 				this.resetAuth();
-				throw new Error(`${e.status}: Google Docs Authorization failed. Try again.\n${e.responseText}`);
+				this.displayWrongAccountPrompt();
+				throw new Error('Handled Error');
 			} else {
 				throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
 			}
