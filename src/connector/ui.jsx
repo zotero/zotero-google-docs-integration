@@ -1278,12 +1278,15 @@ Zotero.GoogleDocs.UI.LinkbubbleOverride = class extends React.Component {
 	
 	waitForLinkbubble() {
 		return new Promise(function(resolve) {
-			var linkbubble = document.querySelector('#docs-link-bubble');	
+			var linkbubble = document.querySelector('.docs-bubble.appsElementsLinkPreview')
+				|| document.querySelector('#docs-link-bubble');
 			if (linkbubble) return resolve(linkbubble);
 			var observer = new MutationObserver(function(mutations) {
 				for (let mutation of mutations) {
 					for (let node of mutation.addedNodes) {
-						if (node.id == "docs-link-bubble") {
+						let idMatches = node.id == "docs-link-bubble";
+						let classMatches = node.classList.contains("docs-bubble") && node.classList.contains('appsElementsLinkPreview');
+						if (idMatches || classMatches) {
 							observer.disconnect();
 							Zotero.GoogleDocs.UI.inLink = true;
 							return resolve(node);
