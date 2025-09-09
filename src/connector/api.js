@@ -168,8 +168,11 @@ Zotero.GoogleDocs.API = {
 				this.resetAuth();
 				this.displayWrongAccountPrompt();
 				throw new Error('Handled Error');
-			} else {
+			} else if (e.status){
 				throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
+			}
+			else {
+				throw e;
 			}
 		}
 		var responseJSON = JSON.parse(xhr.responseText);
@@ -306,7 +309,12 @@ Zotero.GoogleDocs.API = {
 				}
 				throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
 			} else {
-				throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
+				if (e.status) {
+					throw new Error(`${e.status}: Google Docs request failed.\n\n${e.responseText}`);
+				}
+				else {
+					throw e;
+				}
 			}
 		}
 		
