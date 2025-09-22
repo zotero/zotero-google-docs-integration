@@ -265,7 +265,7 @@ Zotero.GoogleDocs.UI = {
 				let orphanedCitations;
 				if (Zotero.GoogleDocs.Client.isV2) {
 					try {
-						let doc = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(docID, this.tabId));
+						let doc = new Zotero.GoogleDocs.Document(await Zotero.GoogleDocs_API.getDocument(docID, tabId));
 						await doc.addPastedRanges(linksToRanges);
 						orphanedCitations = doc.orphanedCitations;
 					}
