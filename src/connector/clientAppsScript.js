@@ -39,7 +39,6 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 	 * Called before each integration transaction once
 	 */
 	init: async function() {
-		this.currentFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
 		this.isInLink = Zotero.GoogleDocs.UI.isInLink();
 		this.orphanedCitationAlertShown = false;
 		this.insertingNote = false;
@@ -412,12 +411,12 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 	},
 
 	cursorInField: async function(showOrphanedCitationAlert=false) {
-		if (!(this.currentFieldID)) return false;
 		this.isInOrphanedField = false;
 
 		var fields = await this.getFields();
 		// The call to getFields() might change the selectedFieldID if there are duplicates
-		let selectedFieldID = this.currentFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
+		let selectedFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
+		if (!selectedFieldID) return false;
 		for (let field of fields) {
 			if (field.id == selectedFieldID) {
 				return field;
