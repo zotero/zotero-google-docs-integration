@@ -797,12 +797,23 @@ let Field = Zotero.GoogleDocs.Field = class {
 		if (field.text) {
 			let range = this.getRange();
 
+			// Preserve locally-set font size from the existing text run, if any
+			let localFontSize = null;
+			if (this.links[0].textStyle?.fontSize) {
+				localFontSize = this.links[0].textStyle.fontSize;
+			}
+
 			this._doc.addBatchedUpdate('deleteContentRange', { range });
 			let textStyle = {
 				underline: false,
 				foregroundColor: this._doc.normalStyle.textStyle.foregroundColor,
 				link: { url: config.fieldURL + this.id }
 			};
+			// Insertions via API default to surrounding text paragraph style including font-size, unless
+			// manually overriden. We pick up the custom set font-size for the current text run here.
+			if (localFontSize) {
+				textStyle.fontSize = localFontSize;
+			}
 			let paragraphStyle = {};
 			var isBibl = field.code && field.code.substr(0, 4) == "BIBL" ||
 				this.code.substr(0, 4) == "BIBL";
