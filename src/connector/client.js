@@ -249,9 +249,8 @@ Zotero.GoogleDocs.Client.prototype = {
 		return response;
 	},
 
-	cursorInField: async function(showOrphanedCitationAlert=false) {
+	cursorInField: async function() {
 		this.isInOrphanedField = false;
-		
 		var fields = await this.getFields();
 		// The call to getFields() might change the selectedFieldID if there are duplicates
 		let selectedFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
@@ -263,13 +262,6 @@ Zotero.GoogleDocs.Client.prototype = {
 		}
 		if (selectedFieldID.startsWith("broken=")) {
 			this.isInOrphanedField = true;
-			if (showOrphanedCitationAlert === true && !this.orphanedCitationAlertShown) {
-				let result = await Zotero.GoogleDocs.UI.displayOrphanedCitationAlert();
-				if (!result) {
-					throw new Error('Handled Error');
-				}
-				this.orphanedCitationAlertShown = true;
-			}
 			return false;
 		}
 		const doc = await this.getGoogleDocument();

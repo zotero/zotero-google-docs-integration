@@ -332,6 +332,15 @@ Zotero.GoogleDocs.UI = {
 		return true;
 	},
 	
+	alertIfCursorInBrokenCitation: async function() {
+		let selectedFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
+		if (selectedFieldID?.startsWith("broken=")) {
+			let result = await Zotero.GoogleDocs.UI.displayOrphanedCitationAlert();
+			return result;
+		}
+		return true;
+	},
+
 	toggleUpdatingScreen: function(display) {
 		if (typeof display === 'undefined') {
 			this.isUpdating = !this.isUpdating;

@@ -410,28 +410,20 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 		return Array.from(this.queued.insert).sort((a, b) => placeholderIDs.indexOf(a.id) - placeholderIDs.indexOf(b.id));
 	},
 
-	cursorInField: async function(showOrphanedCitationAlert=false) {
+	cursorInField: async function() {
 		this.isInOrphanedField = false;
-
 		var fields = await this.getFields();
 		// The call to getFields() might change the selectedFieldID if there are duplicates
 		let selectedFieldID = await Zotero.GoogleDocs.UI.getSelectedFieldID();
 		if (!selectedFieldID) return false;
+		if (selectedFieldID.startsWith("broken=")) {
+			this.isInOrphanedField = true;
+			return false;
+		}
 		for (let field of fields) {
 			if (field.id == selectedFieldID) {
 				return field;
 			}
-		}
-		if (selectedFieldID && selectedFieldID.startsWith("broken=")) {
-			this.isInOrphanedField = true;
-			if (showOrphanedCitationAlert === true && !this.orphanedCitationAlertShown) {
-				let result = await Zotero.GoogleDocs.UI.displayOrphanedCitationAlert();
-				if (!result) {
-					throw new Error('Handled Error');
-				}
-				this.orphanedCitationAlertShown = true;
-			}
-			return false;
 		}
 		throw new Error(`Selected field ${selectedFieldID} not returned from Docs backend`);
 	},

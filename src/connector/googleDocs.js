@@ -120,16 +120,8 @@ Zotero.GoogleDocs = {
 		}
 
 		if (command == 'addEditCitation') {
-			// Check if we're in a broken field and cancel operation if user
-			// wants to click More Info
-			try {
-				await client.cursorInField(showOrphanedCitationAlert);
-			} catch (e) {
-				if (e.message != "Handled Error") {
-					Zotero.logError(e);
-				}
-				return;
-			}
+			const shouldContinue = await Zotero.GoogleDocs.UI.alertIfCursorInBrokenCitation();
+			if (!shouldContinue) return;
 		}
 
 		window.dispatchEvent(new MessageEvent('Zotero.Integration.execCommand', {
@@ -148,19 +140,16 @@ Zotero.GoogleDocs = {
 		// Use the last client with a cached field list to speed up the cursorInField() lookup
 		var client = this.lastClient || new Zotero.GoogleDocs.Client();
 		await client.init();
-		const shouldContinue = await Zotero.GoogleDocs.UI.warnIfLargeDoc(client.documentID);
+		let shouldContinue = await Zotero.GoogleDocs.UI.warnIfLargeDoc(client.documentID);
 		if (!shouldContinue) {
 			Zotero.debug('User cancelled the request in the large document warning');
 			return;
 		}
+
 		try {
-			var field = await client.cursorInField(true);
+			var field = await client.cursorInField();
 		} catch (e) {
-			if (e.message == "Handled Error") {
-				Zotero.debug('Handled Error in editField()');
-				return;
-			}
-			else if (client.isV2 && e.message.startsWith('500: Google Docs request failed')) {
+			if (client.isV2 && e.message.startsWith('500: Google Docs request failed')) {
 				Zotero.debug(`500 error in editField(). Switching to Apps Script`);
 				Zotero.logError(e);
 				// Switch over to ClientAppsScript if 500 error here.
