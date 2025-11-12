@@ -245,7 +245,7 @@ Zotero.GoogleDocs.UI = {
 					let linkRanges = ranges[linkStart].nrs_ei.cv.opValue
 					// `&& key in keysToCode` is kinda strange
 					// since we have just grabbed all the named ranges above from doc slices
-					// but we get reports of copy pasting failing occassionally
+					// but we get reports of copy pasting failing occasionally
 					// and finally got a reproducible case:
 					// https://forums.zotero.org/discussion/80427/
 						.filter(key => !ignoreKeys.has(key) && key in keysToCodes)
