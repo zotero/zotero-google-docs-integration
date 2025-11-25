@@ -810,7 +810,7 @@ let Field = Zotero.GoogleDocs.Field = class {
 				link: { url: config.fieldURL + this.id }
 			};
 			// Insertions via API default to surrounding text paragraph style including font-size, unless
-			// manually overriden. We pick up the custom set font-size for the current text run here.
+			// manually overridden. We pick up the custom set font-size for the current text run here.
 			if (localFontSize) {
 				textStyle.fontSize = localFontSize;
 			}

@@ -537,7 +537,7 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 		if (!(fieldID in this.queued.fields)) {
 			this.queued.fields[fieldID] = {id: fieldID};
 		}
-		// The speed of updates is highly dependend on the size of
+		// The speed of updates is highly dependent on the size of
 		// field codes. There are a few citation styles that require
 		// the abstract field, but they are not many and the speed
 		// improvement is worth the sacrifice. The users who need to

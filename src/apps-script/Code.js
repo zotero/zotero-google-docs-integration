@@ -349,7 +349,7 @@ exposed.footnotesToInline = function(fieldIDs) {
 		var textEl = footnoteSection.editAsText();
 		var url = textEl.getLinkUrl(1);
 		// First footnote character is usually a space, but if the second one is not a link
-		// then we assume the footnote isn't a convertable Zotero field
+		// then we assume the footnote isn't a convertible Zotero field
 		if (!url) return;
 		var key = url.substr(config.fieldURL.length, config.fieldKeyLength);
 		var field = fieldMapping[key];
@@ -631,7 +631,7 @@ exposed.importDocument = function() {
 exposed.clearAllFields = function() {
 	var start = Date.now();
 	var fields = getFields();
-	for (var i = 0; i < fields.lenght; i++) {
+	for (var i = 0; i < fields.length; i++) {
 		var field = fields[i];
 		// Not calling field.unlink(), since that removes the link
 		field.namedRanges.forEach(function(namedRange) {
