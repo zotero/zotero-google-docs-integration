@@ -80,7 +80,25 @@ Zotero.GoogleDocs.Document = class Document {
 		if (this.isExportedDocument()) {
 			return EXPORTED_DOCUMENT_MARKERS[0];
 		}
-		let dataFields = this.getFields(config.dataPrefix);
+		let dataFields;
+		try {
+			dataFields = this.getFields(config.dataPrefix);
+		}
+		catch (e) {
+			// Corrupt document data ranges (e.g. duplicated named ranges from
+			// a bad copy/merge). decodeRanges() already queued deleteNamedRange
+			// for all corrupt ranges. Clean up in-memory state so subsequent
+			// calls (e.g. setDocumentData) don't re-encounter the corruption.
+			Zotero.debug('Google Docs [getDocumentData()]: Corrupt document data'
+				+ ' ranges detected, clearing and re-prompting for document'
+				+ ' preferences: ' + e.message);
+			for (let rangeName in this.namedRanges) {
+				if (rangeName.startsWith(config.dataPrefix)) {
+					delete this.namedRanges[rangeName];
+				}
+			}
+			return JSON.stringify({dataVersion: 4});
+		}
 		if (!dataFields.length) {
 			return JSON.stringify({dataVersion: 4});
 		} else {

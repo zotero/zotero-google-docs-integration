@@ -301,7 +301,21 @@ exposed.getDocumentData = function() {
 	if (isExported) {
 		return EXPORTED_DOCUMENT_MARKERS[0];
 	}
-	var dataFields = getFields(config.dataPrefix);
+	var dataFields;
+	try {
+		dataFields = getFields(config.dataPrefix);
+	}
+	catch (e) {
+		// Corrupt document data ranges (e.g. duplicated named ranges from
+		// a bad copy/merge). decodeRanges() already removed them.
+		// Return empty data to re-prompt for document preferences.
+		console.error({
+			message: "Corrupt document data ranges detected, clearing and"
+				+ " re-prompting for document preferences",
+			error: e
+		});
+		return JSON.stringify({dataVersion: 4});
+	}
 	if (!dataFields.length) {
 		return JSON.stringify({dataVersion: 4});
 	} else {
