@@ -764,7 +764,7 @@ Zotero.GoogleDocs.UI = {
 			selectedText = this.getSelectedText();
 			// If the cursor was at the start of the text then no selection in the previous step occurred
 			if (selectedText.length) {
-				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowRight", keyCode: 39}));
+				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowRight", keyCode: 39, shiftKey: true}));
 				// The element with the selection content does not get reset when we reset the cursor like this
 				// so we do it manually.
 				copyEventTarget.innerHTML = ""
@@ -776,7 +776,7 @@ Zotero.GoogleDocs.UI = {
 				copyEventTarget.dispatchEvent(new CustomEvent('copy'));
 				selectionLink = this.getSelectedLink()
 				selectedText = this.getSelectedText();
-				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowLeft", keyCode: 37}));
+				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowLeft", keyCode: 37, shiftKey: true}));
 				copyEventTarget.innerHTML = ""
 			}
 		}
