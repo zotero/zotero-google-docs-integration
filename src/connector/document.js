@@ -102,8 +102,46 @@ Zotero.GoogleDocs.Document = class Document {
 		if (!dataFields.length) {
 			return JSON.stringify({dataVersion: 4});
 		} else {
-			return dataFields[0].code;
+			return this._verifyDocumentData(dataFields[0].code);
 		}
+	}
+	
+	/**
+	 * Verify that document data is consistent with the actual state of named
+	 * ranges. E.g. if bibliographyStyleHasBeenSet is true but the Z_B ranges
+	 * are missing/corrupt, reset the flag so Zotero re-sends the style.
+	 */
+	_verifyDocumentData(data) {
+		try {
+			let dataObj = JSON.parse(data);
+			if (dataObj.style && dataObj.style.bibliographyStyleHasBeenSet) {
+				let biblStyleFields;
+				try {
+					biblStyleFields = this.getFields(config.biblStylePrefix);
+				}
+				catch (e) {
+					// Corrupt bibliography style ranges — decodeRanges()
+					// already queued deletions. Clean up in-memory state.
+					for (let rangeName in this.namedRanges) {
+						if (rangeName.startsWith(config.biblStylePrefix)) {
+							delete this.namedRanges[rangeName];
+						}
+					}
+					biblStyleFields = [];
+				}
+				if (!biblStyleFields.length) {
+					Zotero.debug('Google Docs [getDocumentData()]: '
+						+ 'bibliographyStyleHasBeenSet is true but no '
+						+ 'bibliography style ranges found, resetting');
+					dataObj.style.bibliographyStyleHasBeenSet = false;
+					data = JSON.stringify(dataObj);
+				}
+			}
+		}
+		catch (e) {
+			// JSON parse error — return data as-is
+		}
+		return data;
 	}
 	
 	setDocumentData(data) {

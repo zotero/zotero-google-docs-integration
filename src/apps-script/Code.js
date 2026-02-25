@@ -319,9 +319,43 @@ exposed.getDocumentData = function() {
 	if (!dataFields.length) {
 		return JSON.stringify({dataVersion: 4});
 	} else {
-		return dataFields[0].code;
+		return verifyDocumentData(dataFields[0].code);
 	}
 };
+
+/**
+ * Verify that document data is consistent with the actual state of named
+ * ranges. E.g. if bibliographyStyleHasBeenSet is true but the Z_B ranges
+ * are missing/corrupt, reset the flag so Zotero re-sends the style.
+ */
+function verifyDocumentData(data) {
+	try {
+		var dataObj = JSON.parse(data);
+		if (dataObj.style && dataObj.style.bibliographyStyleHasBeenSet) {
+			var biblStyleFields;
+			try {
+				biblStyleFields = getFields(config.biblStylePrefix);
+			}
+			catch (e) {
+				// Corrupt bibliography style ranges — decodeRanges()
+				// already removed them.
+				biblStyleFields = [];
+			}
+			if (!biblStyleFields.length) {
+				console.error({
+					message: "bibliographyStyleHasBeenSet is true but no"
+						+ " bibliography style ranges found, resetting"
+				});
+				dataObj.style.bibliographyStyleHasBeenSet = false;
+				data = JSON.stringify(dataObj);
+			}
+		}
+	}
+	catch (e) {
+		// JSON parse error — return data as-is
+	}
+	return data;
+}
 
 exposed.setDocumentData = function(data) {
 	var dataFields = getFields(config.dataPrefix);
