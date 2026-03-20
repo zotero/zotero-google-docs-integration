@@ -44,7 +44,7 @@ Zotero.GoogleDocs.API = {
 		delete this.authCredentials.lastEmail;
 	},
 
-	getAuthHeaders: async function() {
+	getAuthHeaders: async function(tab) {
 		// Delete headers if expired which will cause a refetch
 		if (Zotero.GoogleDocs.API.authCredentials.expiresAt && Date.now() > Zotero.GoogleDocs.API.authCredentials.expiresAt) {
 			delete Zotero.GoogleDocs.API.authCredentials.headers;
@@ -76,7 +76,16 @@ Zotero.GoogleDocs.API = {
 		}
 		Zotero.Connector_Browser.openWindow(url, {type: 'normal', onClose: Zotero.GoogleDocs.API.onAuthCancel});
 		this.authDeferred = Zotero.Promise.defer();
-		return this.authDeferred.promise;
+		try {
+			return await this.authDeferred.promise;
+		}
+		catch (e) {
+			if (e.message.includes('not granted')) {
+				await this.displayPermissionsNotGrantedPrompt(tab);
+				throw new Error('Handled Error');
+			}
+			throw e;
+		}
 	},
 	
 	onAuthComplete: async function(url, tab) {
@@ -141,19 +150,7 @@ Zotero.GoogleDocs.API = {
 		if (! Array.isArray(args)) {
 			args = [];
 		}
-		let headers;
-		try {
-			headers = await this.getAuthHeaders();
-		}
-		catch (e) {
-			if (e.message.includes('not granted')) {
-				this.displayPermissionsNotGrantedPrompt(tab)
-				throw new Error('Handled Error');
-			}
-			else {
-				throw e;
-			}
-		}
+		let headers = await this.getAuthHeaders(tab);
 		headers["Content-Type"] = "application/json";
 		var body = {
 			function: 'callMethod',
@@ -267,8 +264,8 @@ Zotero.GoogleDocs.API = {
 		Zotero.Connector_Browser.openTab('https://www.zotero.org/support/google_docs#authorization');
 	},
 
-	getDocument: async function (docID, tabId=null) {
-		var headers = await this.getAuthHeaders();
+	getDocument: async function (docID, documentTabId=null, browserTab=null) {
+		var headers = await this.getAuthHeaders(browserTab);
 		headers["Content-Type"] = "application/json";
 		try {
 			var xhr = await Zotero.HTTP.request('GET', `https://docs.googleapis.com/v1/documents/${docID}?includeTabsContent=true`,
@@ -320,10 +317,10 @@ Zotero.GoogleDocs.API = {
 		
 		let document = JSON.parse(xhr.responseText);
 		if (!document.tabs) return document;
-		let documentTab = this._getDocumentTabFromTabs(document.tabs, tabId);
+		let documentTab = this._getDocumentTabFromTabs(document.tabs, documentTabId);
 		if (documentTab) {
 			documentTab.documentId = docID;
-			documentTab.tabId = tabId;
+			documentTab.tabId = documentTabId;
 		}
 		return documentTab;
 	},
@@ -366,11 +363,11 @@ Zotero.GoogleDocs.API = {
 		return hashHex;
 	},
 
-	batchUpdateDocument: async function (docId, tabId=null, body) {
-		var headers = await this.getAuthHeaders();
-		if (tabId) {
+	batchUpdateDocument: async function (docId, documentTabId=null, body, browserTab=null) {
+		var headers = await this.getAuthHeaders(browserTab);
+		if (documentTabId) {
 			for (let request of body.requests) {
-				request = this._addTabDataToObject(request, tabId);
+				request = this._addTabDataToObject(request, documentTabId);
 			}
 		}
 		try {
