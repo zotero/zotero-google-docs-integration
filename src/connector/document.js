@@ -853,11 +853,8 @@ let Field = Zotero.GoogleDocs.Field = class {
 		if (field.text) {
 			let range = this.getRange();
 
-			// Preserve locally-set font size from the existing text run, if any
-			let localFontSize = null;
-			if (this.links[0].textStyle?.fontSize) {
-				localFontSize = this.links[0].textStyle.fontSize;
-			}
+			// Preserve locally-set text style from the existing text run, if any
+			let existingTextStyle = this.links[0].textStyle || {};
 
 			this._doc.addBatchedUpdate('deleteContentRange', { range });
 			let textStyle = {
@@ -866,9 +863,18 @@ let Field = Zotero.GoogleDocs.Field = class {
 				link: { url: config.fieldURL + this.id }
 			};
 			// Insertions via API default to surrounding text paragraph style including font-size, unless
-			// manually overridden. We pick up the custom set font-size for the current text run here.
-			if (localFontSize) {
-				textStyle.fontSize = localFontSize;
+			// manually overridden. We pick up the custom set styles for the current text run here.
+			if (existingTextStyle.fontSize) {
+				textStyle.fontSize = existingTextStyle.fontSize;
+			}
+			if (existingTextStyle.bold) {
+				textStyle.bold = existingTextStyle.bold;
+			}
+			if (existingTextStyle.italic) {
+				textStyle.italic = existingTextStyle.italic;
+			}
+			if (existingTextStyle.weightedFontFamily) {
+				textStyle.weightedFontFamily = existingTextStyle.weightedFontFamily;
 			}
 			let paragraphStyle = {};
 			var isBibl = field.code && field.code.substr(0, 4) == "BIBL" ||
