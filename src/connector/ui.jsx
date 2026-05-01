@@ -300,6 +300,15 @@ Zotero.GoogleDocs.UI = {
 		this.isDocx = document.querySelector('#office-editing-file-extension').innerHTML.includes('docx');
 		return this.isDocx;
 	},
+
+	/**
+	 * We are in a table if Table Options button is visible
+	 * @returns {boolean}
+	 */
+	isInTable: function() {
+		let elem = this._getElemBySelectors('#tableOptionsButton', false);
+		return elem && elem.style.display !== "none";
+	},
 	
 	displayDocxAlert: function() {
 		const options = {
@@ -737,6 +746,7 @@ Zotero.GoogleDocs.UI = {
 	 * and checking whether the selected text is a Zotero citation
 	 */
 	getSelectedFieldID: async function() {
+		const isInTable = this.isInTable();
 		let isZoteroLink = url => url.indexOf(Zotero.GoogleDocs.config.fieldURL) == 0;
 		
 		let textEventTarget = this._getElemBySelectors('.docs-texteventtarget-iframe').contentDocument;
@@ -763,7 +773,7 @@ Zotero.GoogleDocs.UI = {
 			selectionLink = this.getSelectedLink()
 			selectedText = this.getSelectedText();
 			// If the cursor was at the start of the text then no selection in the previous step occurred
-			if (selectedText.length) {
+			if (isInTable || selectedText.length) {
 				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowRight", keyCode: 39, shiftKey: true}));
 				// The element with the selection content does not get reset when we reset the cursor like this
 				// so we do it manually.
