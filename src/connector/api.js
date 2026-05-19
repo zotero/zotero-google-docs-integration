@@ -321,6 +321,7 @@ Zotero.GoogleDocs.API = {
 		if (documentTab) {
 			documentTab.documentId = docID;
 			documentTab.tabId = documentTabId;
+			documentTab.revisionId = document.revisionId;
 		}
 		return documentTab;
 	},
