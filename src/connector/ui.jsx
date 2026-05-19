@@ -774,7 +774,17 @@ Zotero.GoogleDocs.UI = {
 			selectedText = this.getSelectedText();
 			// If the cursor was at the start of the text then no selection in the previous step occurred
 			if (isInTable || selectedText.length) {
-				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowRight", keyCode: 39, shiftKey: true}));
+				// Absolutely cursed interaction here.
+				// For most cases this works as expected. You select one character back, check if we've selected
+				// a Zotero link, and if not press right-arrow to get an empty selection again. However:
+				// 1. If you are at the start of a table cell, shift-arrow-left selects the full cell. Then arrow-right
+				//    pops you out of the full table for some reason. So we have to use shift-arrow-right for the "unselection" move
+				//    And also `selectedText.length` is 0 in that case.
+				// 2. If you are at a new line, which isn't a regular newline (pressing Enter/Return), but rather
+				//    a fake newline (shift-Enter), then selecting it with left-arrow produces selectedText.length === 0,
+				//    but if you try to open a link insertion dialog later, there is an actual selection, and you get
+				//    the wrong version of it (apply url to selection vs insert text and url).
+				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowRight", keyCode: 39, shiftKey: isInTable}));
 				// The element with the selection content does not get reset when we reset the cursor like this
 				// so we do it manually.
 				copyEventTarget.innerHTML = ""
@@ -786,7 +796,7 @@ Zotero.GoogleDocs.UI = {
 				copyEventTarget.dispatchEvent(new CustomEvent('copy'));
 				selectionLink = this.getSelectedLink()
 				selectedText = this.getSelectedText();
-				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowLeft", keyCode: 37, shiftKey: true}));
+				textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowLeft", keyCode: 37, shiftKey: isInTable}));
 				copyEventTarget.innerHTML = ""
 			}
 		}
