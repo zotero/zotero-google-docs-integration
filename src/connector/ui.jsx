@@ -590,6 +590,8 @@ Zotero.GoogleDocs.UI = {
 	 * @returns {Promise<void>}
 	 */
 	selectText: async function(text, url=null) {
+		// TODO: Broken due to gdocs UI changes, needs troubleshooting
+		return;
 		// Some recent change probably in the Google Docs editor is causing user citations
 		// to become single-character length strings, most often ".". It causes the selection code
 		// to "cycle" through matches, which on long documents causes user confusion and frustration.
