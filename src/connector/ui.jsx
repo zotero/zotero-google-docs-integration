@@ -39,6 +39,10 @@ const TEXT_INPUT_SELECTORS = ['.docs-link-insertlinkbubble-text', '.docs-link-sm
 	'.appsElementsLinkInsertionLinkTextInput input'];
 const URL_INPUT_SELECTORS = ['.docs-link-urlinput-url', '.docs-link-searchinput-search',
 	'.appsElementsLinkInsertionLinkSearchInput input'];
+const FIND_INPUT_SELECTORS = ['.appsDocsUiWizFindandreplacedialogInputsContainer input'];
+const FIND_COUNT_SELECTORS = ['.appsDocsUiWizFindandreplacedialogFindInputCounter'];
+const FIND_DOWN_BUTTON_SELECTORS = ['.appsDocsUiWizFindandreplacedialogButtonsContainer > :nth-child(4) button'];
+const FIND_CLOSE_BUTTON_SELECTORS = ['.appsDocsUiWizFindandreplacedialogCloseButtonContainer button'];
 const SYNC_ICON_SELECTORS = ['.docs-icon-sync', '.docs-sync-20'];
 const SYNC_TIMEOUT = 10e3;
 const WARN_PAGE_COUNT = 100;
@@ -464,16 +468,6 @@ Zotero.GoogleDocs.UI = {
 		this._removeMenuShortcut = null;
 	},
 	
-	activate: async function(force, message) {
-		message = message || "Zotero needs the Google Docs tab to stay active for the current operation. " +
-				"Please do not switch away from the browser until the operation is complete.";
-		await Zotero.Connector_Browser.bringToFront(true);
-		if (force && ! document.hasFocus()) {
-			await this.displayAlert(message, 0, 0);
-			return this.activate(force);
-		}
-	},
-	
 	displayAlert: async function (text, icons, options = 0) {
 		if (typeof options == 'number') {
 			switch (options) {
@@ -590,58 +584,84 @@ Zotero.GoogleDocs.UI = {
 	 * @returns {Promise<void>}
 	 */
 	selectText: async function(text, url=null) {
-		// TODO: Broken due to gdocs UI changes, needs troubleshooting
-		return;
 		// Some recent change probably in the Google Docs editor is causing user citations
 		// to become single-character length strings, most often ".". It causes the selection code
 		// to "cycle" through matches, which on long documents causes user confusion and frustration.
 		if (text.length <= 2) {
 			return;
 		}
-		this.toggleUpdatingScreen(false);
-		var openFindDialogKbEvent = {ctrlKey: true, key: 'f', keyCode: '70'};
-		if (Zotero.isMac) {
-			openFindDialogKbEvent = {metaKey: true, key: 'f', keyCode: '70'};
-		}
-		// On document load findinput is not present, but we need to set its value before
-		// clicking ctrl+f
-		if (!document.querySelector('.docs-findinput-input')) {
-			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindDialogKbEvent);
-			await Zotero.GoogleDocs.UI.clickElement(document.querySelector('#docs-findbar-id .docs-icon-close'));
-
-			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindDialogKbEvent);
-			document.querySelector('.docs-findinput-input').value = text;
-			document.querySelector('.docs-findinput-input').dispatchEvent(new KeyboardEvent('input'));
+		try {
+			this.toggleUpdatingScreen(false);
+			
+			// Move cursor out of any selectedText
+			const textEventTarget = document.querySelector('.docs-texteventtarget-iframe').contentDocument;
+			textEventTarget.dispatchEvent(new KeyboardEvent('keydown', {key: "ArrowRight", keyCode: 39}));
 			await Zotero.Promise.delay();
-			await Zotero.GoogleDocs.UI.clickElement(document.querySelector('#docs-findbar-id .docs-icon-close'));
-		} else {
-			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindDialogKbEvent);
-			document.querySelector('.docs-findinput-input').value = text;
-			document.querySelector('.docs-findinput-input').dispatchEvent(new KeyboardEvent('input'));
-			await Zotero.Promise.delay();
-			await Zotero.GoogleDocs.UI.clickElement(document.querySelector('#docs-findbar-id .docs-icon-down'));
-			await Zotero.GoogleDocs.UI.clickElement(document.querySelector('#docs-findbar-id .docs-icon-close'));
-		}
-		let match = /[0-9]+[^0-9]+([0-9]+)/.exec(document.querySelector('.docs-findinput-count').textContent);
-		let numMatches = 0;
-		if (match) {
-			numMatches = parseInt(match[1]);
-		}
-		if (!numMatches) {
-			return false;
-		}
-		if (!url || (Zotero.GoogleDocs.UI.inLink && Zotero.GoogleDocs.UI.lastLinkURL == url)) {
-			return true;
-		}
-		
-		for (numMatches--; numMatches > 0; numMatches--) {
-			await this.activate(true);
-			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindDialogKbEvent);
-			await Zotero.GoogleDocs.UI.clickElement(document.querySelector('#docs-findbar-id .docs-icon-down'));
-			await Zotero.GoogleDocs.UI.clickElement(document.querySelector('#docs-findbar-id .docs-icon-close'));
-			if (Zotero.GoogleDocs.UI.inLink && Zotero.GoogleDocs.UI.lastLinkURL == url) {
+			
+			var openFindAndReplaceDialogKey = {ctrlKey: true, key: 'h', keyCode: 72};
+			if (Zotero.isMac) {
+				openFindAndReplaceDialogKey = {metaKey: true, key: 'h', keyCode: 72};
+			}
+			
+			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindAndReplaceDialogKey);
+			let findInput = this._getElemBySelectors(FIND_INPUT_SELECTORS);
+			findInput.value = text;
+			findInput.dispatchEvent(new KeyboardEvent('input', { bubbles: true }));
+			
+			let findCountRegex = /([0-9])+[^0-9]+([0-9]+)/;
+			let findCountElem = this._getElemBySelectors(FIND_COUNT_SELECTORS);
+			let matchFound = await this._waitForMutation(findCountElem,
+				{ childList: true, subtree: true, characterData: true },
+				() => findCountRegex.test(findCountElem.textContent));
+			let numMatches = 0;
+			if (matchFound) {
+				let match = findCountRegex.exec(findCountElem.textContent);
+				numMatches = parseInt(match[2]);
+			}
+			await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS));
+			if (!numMatches) {
+				return false;
+			}
+			let selectedLink = this.getSelectedLink();
+			if (!url || selectedLink == url) {
 				return true;
 			}
+
+			for (numMatches--; numMatches > 0; numMatches--) {
+				await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindAndReplaceDialogKey);
+				let downButton = this._getElemBySelectors(FIND_DOWN_BUTTON_SELECTORS);
+				
+				// Wait for next match button to stop being disabled
+				await this._waitForMutation(downButton, {
+					attributes: true,
+					attributeFilter: ['disabled']
+				}, () => !downButton.hasAttribute('disabled'));
+				let match = findCountRegex.exec(findCountElem.textContent);
+				await Zotero.GoogleDocs.UI.clickElement(downButton);
+				
+				// Wait for the selected match to update
+				await this._waitForMutation(findCountElem,
+					{ childList: true, subtree: true, characterData: true},
+					() => match[1] !== findCountRegex.exec(findCountElem.textContent)[1])
+				
+				await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS));
+				selectedLink = this.getSelectedLink();
+				if (selectedLink == url) {
+					return true;
+				}
+			}
+			return false;
+		}
+		catch (e) {
+			// It's not great when selectText fails, but it shouldn't make the integration command
+			// fail completely as it makes it impossible for users to update the document at all.
+			Zotero.logError(e);
+			return false;
+		}
+		finally {
+			try {
+				await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS));
+			} catch (e) {}
 		}
 	},
 	
@@ -689,7 +709,11 @@ Zotero.GoogleDocs.UI = {
 	},
 	
 	getSelectedText: function() {
-		var selection = document.querySelector('.docs-texteventtarget-iframe').contentDocument.body.textContent;
+		const textEventTarget = this._getElemBySelectors('.docs-texteventtarget-iframe').contentDocument;
+		const copyEventTarget = textEventTarget.querySelector('[contenteditable]');
+		copyEventTarget.innerHTML = ""
+		copyEventTarget.dispatchEvent(new CustomEvent('copy'));
+		var selection = textEventTarget.body.textContent;
 		// on macOS a U+200B ZERO WIDTH SPACE is the text content when nothing is selected here
 		// so we remove and trim various unicode zero-width space characters here
 		selection = selection.replace(/[\u200B-\u200D\uFEFF]/g, '');
@@ -697,7 +721,11 @@ Zotero.GoogleDocs.UI = {
 	},
 	
 	getSelectedLink: function() {
-		let elem = document.querySelector('.docs-texteventtarget-iframe').contentDocument.body.querySelector('a');
+		const textEventTarget = this._getElemBySelectors('.docs-texteventtarget-iframe').contentDocument;
+		const copyEventTarget = textEventTarget.querySelector('[contenteditable]');
+		copyEventTarget.innerHTML = ""
+		copyEventTarget.dispatchEvent(new CustomEvent('copy'));
+		let elem = textEventTarget.body.querySelector('a');
 		if (!elem) return "";
 		else return elem.getAttribute('href');
 	},
@@ -832,6 +860,35 @@ Zotero.GoogleDocs.UI = {
 	// Wait for google docs to save the text insertion
 	waitToSaveInsertion: async function() {
 		return this.docSyncedPromise;
+	},
+
+	_waitForMutation(elem, observeOptions, condition) {
+		if (!observeOptions) throw new Error("Must provide observeOptions");
+		return new Promise((resolve) => {
+			let observer;
+			let timeout = setTimeout(() => {
+				if (observer) {
+					observer.disconnect();
+				}
+				resolve(false);
+			}, 1000);
+			let checkCondition = () => {
+				if (!condition()) {
+					return false;
+				}
+				clearTimeout(timeout);
+				if (observer) {
+					observer.disconnect();
+				}
+				resolve(true);
+				return true;
+			};
+			if (checkCondition()) {
+				return true;
+			}
+			observer = new MutationObserver(checkCondition);
+			observer.observe(elem, observeOptions);
+		});
 	},
 
 	_getElemBySelectors(selectors, throwError=true) {
