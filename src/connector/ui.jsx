@@ -614,12 +614,12 @@ Zotero.GoogleDocs.UI = {
 			}
 			
 			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindAndReplaceDialogKey);
-			let findInput = this._getElemBySelectors(FIND_INPUT_SELECTORS);
+			let findInput = this._getElemBySelectors(FIND_INPUT_SELECTORS, false);
 			findInput.value = text;
 			findInput.dispatchEvent(new KeyboardEvent('input', { bubbles: true }));
 			
 			let findCountRegex = /([0-9])+[^0-9]+([0-9]+)/;
-			let findCountElem = this._getElemBySelectors(FIND_COUNT_SELECTORS);
+			let findCountElem = this._getElemBySelectors(FIND_COUNT_SELECTORS, false);
 			let matchFound = await this._waitForMutation(findCountElem,
 				{ childList: true, subtree: true, characterData: true },
 				() => findCountRegex.test(findCountElem.textContent));
@@ -628,7 +628,7 @@ Zotero.GoogleDocs.UI = {
 				let match = findCountRegex.exec(findCountElem.textContent);
 				numMatches = parseInt(match[2]);
 			}
-			await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS));
+			await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS, false));
 			if (!numMatches) {
 				return false;
 			}
@@ -639,7 +639,7 @@ Zotero.GoogleDocs.UI = {
 
 			for (numMatches--; numMatches > 0; numMatches--) {
 				await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindAndReplaceDialogKey);
-				let downButton = this._getElemBySelectors(FIND_DOWN_BUTTON_SELECTORS);
+				let downButton = this._getElemBySelectors(FIND_DOWN_BUTTON_SELECTORS, false);
 				
 				// Wait for next match button to stop being disabled
 				await this._waitForMutation(downButton, {
@@ -654,7 +654,7 @@ Zotero.GoogleDocs.UI = {
 					{ childList: true, subtree: true, characterData: true},
 					() => match[1] !== findCountRegex.exec(findCountElem.textContent)[1])
 				
-				await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS));
+				await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS, false));
 				selectedLink = this.getSelectedLink();
 				if (selectedLink == url) {
 					return true;
@@ -670,7 +670,7 @@ Zotero.GoogleDocs.UI = {
 		}
 		finally {
 			try {
-				await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS));
+				await Zotero.GoogleDocs.UI.clickElement(this._getElemBySelectors(FIND_CLOSE_BUTTON_SELECTORS, false));
 			} catch (e) {}
 		}
 	},
