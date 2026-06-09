@@ -545,7 +545,7 @@ Zotero.GoogleDocs.UI = {
 		await Zotero.Promise.delay();
 	},
 	
-	sendKeyboardEvent: async function(eventDescription, target) {
+	sendKeyboardEvent: async function(eventDescription, target, skipKeypress) {
 		if (!target) {
 			target = document.querySelector('.docs-texteventtarget-iframe').contentDocument;
 			
@@ -555,7 +555,10 @@ Zotero.GoogleDocs.UI = {
 			target.dispatchEvent(new KeyboardEvent('keydown', eventDescription));
 			await Zotero.Promise.delay();
 			target.dispatchEvent(new KeyboardEvent('keyup', eventDescription));
-			target.dispatchEvent(new KeyboardEvent('keypress', eventDescription));
+			// Skip keypress event if explicitly specified
+			if (!skipKeypress) {
+				target.dispatchEvent(new KeyboardEvent('keypress', eventDescription));
+			}
 			await Zotero.Promise.delay();
 			return;
 		}
@@ -639,12 +642,14 @@ Zotero.GoogleDocs.UI = {
 		if (Zotero.isMac) {
 			insertFootnoteKbEvent = {metaKey: true, altKey: true, key: 'f', keyCode: 70};
 		}
-		await Zotero.GoogleDocs.UI.sendKeyboardEvent(insertFootnoteKbEvent);
-		// Somehow the simulated footnote shortcut inserts an "F" at the start of the footnote.
-		// But not on a mac. Why? Why not on a Mac?
-		if (!Zotero.isMac) {
-			await Zotero.GoogleDocs.UI.sendKeyboardEvent({key: "Backspace", keyCode: 8});
-		}
+		// Sometimes, on Windows and Linux (but not macOS), dispatching `keypress` event leads
+		// to an unwanted "F" character inserted into the footnote.
+		// `keypress` is not necessary to trigger shortcuts, so send `keyup` and `keydown` events only.
+		await Zotero.GoogleDocs.UI.sendKeyboardEvent(insertFootnoteKbEvent, null, true);
+		// Ensure the cursor is moved past the first whitespace, so that it ends up on a Zotero link.
+		// Otherwise, it would not be handled by moveCursorToEndOfCitation, and cursor would remain
+		// at the very beginning of the footnote.
+		await Zotero.GoogleDocs.UI.sendKeyboardEvent({ key: "ArrowRight", keyCode: 39 }, null, true);
 	},
 	
 	insertLink: async function(text, url) {
