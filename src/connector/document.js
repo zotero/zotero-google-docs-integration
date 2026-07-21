@@ -1025,8 +1025,12 @@ let HTMLInserter = Zotero.GoogleDocs.HTMLInserter = class {
 		
 		let div = document.createElement('div');
 		// For HTML like <i>Journal</i> <b>2016</b>.
-		// The space between tags would get trimmed away, so we move it into the first tag
-		div.innerHTML = html.replace(/(<\s*\/[^>]+>) +</gm, ' $1<').replace(/[' \n']+/gm, ' ').trim();
+		// The space between tags would get trimmed away, so we move it into the first tag.
+		// Do not use String.prototype.trim() here: some citation styles intentionally
+		// start with a non-breaking space, which must remain part of the field text.
+		div.innerHTML = html.replace(/(<\s*\/[^>]+>) +</gm, ' $1<')
+			.replace(/[' \n']+/gm, ' ')
+			.replace(/^[\t\n\v\f\r ]+|[\t\n\v\f\r ]+$/g, '');
 		div.style.fontSize = 0;
 		
 		document.body.appendChild(div);
