@@ -323,6 +323,21 @@ Zotero.GoogleDocs.UI = {
 		return Zotero.Inject.confirm(options);
 	},
 
+	displayCorruptCitationsAlert: async function(citations) {
+		// Refresh may leave Zotero's progress window in front of the document.
+		await this.activate();
+		const citationList = citations
+			.map(citation => `"${Zotero.Utilities.htmlSpecialChars(citation.text)}"`)
+			.join('<br/>');
+		let result = await Zotero.Inject.confirm({
+			title: Zotero.getString('general_warning'),
+			button2Text: "",
+			message: Zotero.getString('integration_googleDocs_corruptCitations_alert', ZOTERO_CONFIG.CLIENT_NAME)
+				+ '<br/><br/>' + citationList
+		});
+		return result.button;
+	},
+
 	/**
 	 * @returns {Promise<boolean>} true if citation editing should continue
 	 */

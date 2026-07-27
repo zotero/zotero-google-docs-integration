@@ -223,6 +223,9 @@ Zotero.GoogleDocs.ClientAppsScript.prototype = {
 		let response = await this.runAppsScript('getFields', [this.queued.conversion]);
 		this.fields = response.fields;
 		this.orphanedCitations = response.orphanedCitations;
+		if (response.corruptCitations && response.corruptCitations.length) {
+			await Zotero.GoogleDocs.UI.displayCorruptCitationsAlert(response.corruptCitations);
+		}
 		Zotero.GoogleDocs.UI.orphanedCitations.setCitations(this.orphanedCitations);
 		let i = 0;
 		for (let field of this.fields) {

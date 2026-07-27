@@ -37,6 +37,7 @@ Zotero.GoogleDocs.Document = class Document {
 		this._batchedUpdates = [];
 		this._updatesCommited = false;
 		this.orphanedCitations = [];
+		this.corruptCitations = [];
 		this.bodyRange = {
 			startIndex: 0,
 			endIndex: this.body.content[this.body.content.length-1].endIndex,
@@ -314,15 +315,36 @@ Zotero.GoogleDocs.Document = class Document {
 			}
 		}
 		let fields = [];
+		let decodedCodes = {};
 		if (isField) {
+			// Decode every field-code group first so corruption in one field does
+			// not stop us from finding and repairing the rest.
+			for (let key in rangeFields) {
+				try {
+					decodedCodes[key] = this.decodeRanges(rangeFields[key], prefix+key);
+				}
+				catch (e) {
+					if (!e.message.startsWith('Ranges corrupt on ')) throw e;
+					// decodeRanges() queued deletion of all ranges in this group.
+					rangeFields[key].corrupt = true;
+					rangeFields[key].exists = true;
+				}
+			}
+
 			let field;
 			Utilities.filterFieldLinks(this.getLinks()).forEach((link, idx) => {
 				let key = link.url.substr(config.fieldURL.length, config.fieldKeyLength);
 				if (rangeFields[key]) {
+					// The pre-decode pass above marks corrupt groups. Convert every
+					// citation link sharing that group, without trying to construct a Field.
+					if (rangeFields[key].corrupt) {
+						this._handleCorruptCitation(link);
+						return;
+					}
 					// We have a corresponding namedRange for this link (i.e. field code is not unlinked)
 					// First link in the text with this key
 					if (!rangeFields[key].exists) {
-						field = new Field(this, link, key, rangeFields[key], prefix, field);
+						field = new Field(this, link, key, rangeFields[key], prefix, field, decodedCodes[key]);
 						rangeFields[key].exists = field;
 					}
 					// Not first encounter of the same link in the text.
@@ -661,6 +683,14 @@ Zotero.GoogleDocs.Document = class Document {
 		}).sort((a, b) => placeholderIDs.indexOf(a.id) - placeholderIDs.indexOf(b.id));
 	}
 
+	_handleCorruptCitation(link) {
+		this.corruptCitations.push({
+			key: link.url.substr(config.fieldURL.length, config.fieldKeyLength),
+			text: link.text
+		});
+		this.handleOrphanedCitation(link);
+	}
+
 	handleOrphanedCitation(link) {
 		var key = link.url.substr(config.fieldURL.length);
 		if (key.indexOf('broken=') === 0) {
@@ -812,7 +842,7 @@ Zotero.GoogleDocs.Document = class Document {
 }
 
 let Field = Zotero.GoogleDocs.Field = class {
-	constructor(doc, link, key, namedRanges, prefix, previousField) {
+	constructor(doc, link, key, namedRanges, prefix, previousField, decodedCode) {
 		prefix = prefix || config.fieldPrefix;
 
 		this._doc = doc;
@@ -824,7 +854,9 @@ let Field = Zotero.GoogleDocs.Field = class {
 			previousField.adjacent = Utilities.getRangeFromLinks(previousField.links).endIndex === link.startIndex;
 		}
 
-		this.initialCode = this.code = this._doc.decodeRanges(namedRanges, prefix+key);
+		this.initialCode = this.code = typeof decodedCode == 'undefined'
+			? this._doc.decodeRanges(namedRanges, prefix+key)
+			: decodedCode;
 		this.text = link.text;
 		this.noteIndex = link.noteIndex;
 		

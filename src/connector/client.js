@@ -179,10 +179,22 @@ Zotero.GoogleDocs.Client.prototype = {
 		// other hand we only need to wait for save in the first place for a get operation - to
 		// to fetch the fields here to be displayed in the Cited section of the citation dialog
 		await Zotero.GoogleDocs.UI.waitToSaveInsertion();
-		const doc = await this.getGoogleDocument();
+		let doc = await this.getGoogleDocument();
 		
-		let fields;
-		fields = doc.getFields(Zotero.GoogleDocs.config.fieldPrefix, !this._documentExport);
+		let fields = doc.getFields(Zotero.GoogleDocs.config.fieldPrefix, !this._documentExport);
+		let corruptCitations = doc.corruptCitations;
+		if (corruptCitations.length) {
+			// Persist removal of all corrupt field-code ranges and conversion of
+			// their links to orphaned citations before continuing the command.
+			await doc.commitBatchedUpdates();
+			// Named ranges and links changed, and a Document cannot be committed
+			// twice. Reload so the Field objects used by the rest of this
+			// transaction belong to a fresh, accurate Document.
+			this._doc = null;
+			doc = await this.getGoogleDocument();
+			fields = doc.getFields(Zotero.GoogleDocs.config.fieldPrefix, !this._documentExport);
+			await Zotero.GoogleDocs.UI.displayCorruptCitationsAlert(corruptCitations);
+		}
 		Zotero.GoogleDocs.UI.orphanedCitations.setCitations(doc.orphanedCitations);
 
 		this._fieldsByFieldId = {};

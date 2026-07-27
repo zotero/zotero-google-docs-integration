@@ -45,6 +45,7 @@ var EXPORTED_DOCUMENT_MARKERS = ["ZOTERO_TRANSFER_DOCUMENT", "ZOTERO_EXPORTED_DO
 var doc, _doc, bodyRange, docID, tabID, insertIdx, apiVersion = 0;
 var extraReturnData = {};
 var orphanedCitations = [];
+var corruptCitations = [];
 
 function callMethod(documentSpecifier, method, args, apiVers) {
 	apiVersion = apiVers || apiVersion;
@@ -126,11 +127,32 @@ function getFields(prefix, removePlaceholder) {
 		}
 	});
 	var fields = [];
+	var decodedCodes = {};
 	if (isField) {
+		// Decode every field-code group first so corruption in one field does
+		// not stop us from finding and repairing the rest.
+		for (var key in rangeFields) {
+			try {
+				decodedCodes[key] = decodeRanges(rangeFields[key], prefix+key);
+			}
+			catch (e) {
+				if (e.message.indexOf('Ranges corrupt on ') != 0) throw e;
+				// decodeRanges() removed all ranges in this group.
+				rangeFields[key].corrupt = true;
+				rangeFields[key].exists = true;
+			}
+		}
+
 		var field;
 		filterFieldLinks(getAllLinks()).forEach(function(link, idx) {
 			var key = link.url.substr(config.fieldURL.length, config.fieldKeyLength);
 			if (rangeFields[key]) {
+				// The pre-decode pass above marks corrupt groups. Convert every
+				// citation link sharing that group, without trying to construct a Field.
+				if (rangeFields[key].corrupt) {
+					handleCorruptCitation(link);
+					return;
+				}
 				if (rangeFields[key].exists) {
 					var isBibl = rangeFields[key][0].getName().substr((prefix+key).length+3, 4) == 'BIBL';
 					if (!isBibl) {
@@ -146,7 +168,7 @@ function getFields(prefix, removePlaceholder) {
 						return;
 					}
 				} else {
-					field = new Field(link, key, rangeFields[key], prefix, field)
+					field = new Field(link, key, rangeFields[key], prefix, field, decodedCodes[key])
 					rangeFields[key].exists = field;
 				}
 				fields.push(field);
@@ -257,6 +279,15 @@ function decodeRanges(namedRanges, prefix) {
 function checkForExportMarker() {
 	var p = doc.getBody().getParagraphs()[0];
 	return EXPORTED_DOCUMENT_MARKERS.some(function (marker) { return p.findText(marker); });
+}
+
+function handleCorruptCitation(link) {
+	var text = link.text.getText().substring(link.startOffset, link.endOffsetInclusive+1);
+	corruptCitations.push({
+		key: link.url.substr(config.fieldURL.length, config.fieldKeyLength),
+		text: text
+	});
+	handleOrphanedCitation(link);
 }
 
 function handleOrphanedCitation(link) {
@@ -484,7 +515,11 @@ exposed.getFields = function (placeholders) {
 		fields = fields.slice(0, insertIdx).concat([-1], fields.slice(insertIdx));
 	}
 	if (apiVersion >= 5) {
-		return { fields: fields, orphanedCitations: orphanedCitations };
+		return {
+			fields: fields,
+			orphanedCitations: orphanedCitations,
+			corruptCitations: corruptCitations
+		};
 	}
 	return fields;
 };
@@ -744,7 +779,7 @@ exposed.addPastedRanges = function(linksToCodes) {
 	return { orphanedCitations: orphanedCitations };
 }
 
-var Field = function(link, key, namedRanges, prefix, previousField) {
+var Field = function(link, key, namedRanges, prefix, previousField, decodedCode) {
 	prefix = prefix || config.fieldPrefix;
 	
 	this.id = key;
@@ -757,7 +792,9 @@ var Field = function(link, key, namedRanges, prefix, previousField) {
 			previousLink.endOffsetInclusive + 1 === link.startOffset;
 	}
 	
-	this.code = decodeRanges(namedRanges, prefix+key);
+	this.code = typeof decodedCode == 'undefined'
+		? decodeRanges(namedRanges, prefix+key)
+		: decodedCode;
 	this.noteIndex = link.footnoteIndex;
 };
 
