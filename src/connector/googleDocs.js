@@ -88,7 +88,13 @@ Zotero.GoogleDocs = {
 		// Check if we should use ClientAppsScript based on reportTranslationFailure preference
 		// and server-side configuration
 		let useV2API = await Zotero.Prefs.getAsync('integration.googleDocs.useV2API');
-		if (await Zotero.Prefs.getAsync('reportTranslationFailure')) {
+		let checkServerConfig = await Zotero.Prefs.getAsync('reportTranslationFailure');
+		if (checkServerConfig && Zotero.isSafari) {
+			// Requesting repo.zotero.org without permission triggers a Safari permission prompt,
+			// which isn't warranted for this request
+			checkServerConfig = await Zotero.HostPermissions.hasPermission('repo.zotero.org');
+		}
+		if (checkServerConfig) {
 			try {
 				let xhr = await Zotero.HTTP.request('GET', ZOTERO_CONFIG.SETTINGS_URL, { headers: { "Zotero-Connector-Version": Zotero.version }});
 				let response = JSON.parse(xhr.responseText);
