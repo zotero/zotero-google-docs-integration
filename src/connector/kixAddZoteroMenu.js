@@ -43,7 +43,8 @@ var buttonAdded = false;
 var templateElem;
 
 function addMenuOption(menubar) {
-	if (isIntegrationEnabled) {
+	// The menu may already exist if the content scripts are injected into the page again
+	if (isIntegrationEnabled && !document.getElementById('docs-zotero-menubutton')) {
 		var docsHelpMenu = document.getElementById('docs-help-menu');
 		templateElem = document.createElement('template');
 		templateElem.innerHTML = `<div id="docs-zotero-menubutton" class="menu-button goog-control goog-inline-block" role="menuitem" aria-haspopup="true" aria-disabled="false">Zotero</div>`;
@@ -53,7 +54,7 @@ function addMenuOption(menubar) {
 }
 
 async function addToolbarButton(toolbar) {
-	if (isIntegrationEnabled) {
+	if (isIntegrationEnabled && !document.getElementById('zoteroAddEditCitation')) {
 		var imageURL = Zotero.getExtensionURL('images/zotero-z-16px-offline.png');
 		var shortcut = 'Ctrl+Alt+C';
 		if (Zotero.isMac) {
