@@ -628,7 +628,7 @@ Zotero.GoogleDocs.UI = {
 			
 			var openFindAndReplaceDialogKey = {ctrlKey: true, key: 'h', keyCode: 72};
 			if (Zotero.isMac) {
-				openFindAndReplaceDialogKey = {metaKey: true, key: 'h', keyCode: 72};
+				openFindAndReplaceDialogKey = {metaKey: true, shiftKey: true, key: 'h', keyCode: 72};
 			}
 			
 			await Zotero.GoogleDocs.UI.sendKeyboardEvent(openFindAndReplaceDialogKey);
