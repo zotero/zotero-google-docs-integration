@@ -154,7 +154,7 @@ function getFields(prefix, removePlaceholder) {
 					return;
 				}
 				if (rangeFields[key].exists) {
-					var isBibl = rangeFields[key][0].getName().substr((prefix+key).length+3, 4) == 'BIBL';
+					var isBibl = decodedCodes[key].substr(0, 4) == 'BIBL';
 					if (!isBibl) {
 						// There are multiple links for the same key, which means that citations have been copied
 						// so we need to assign them a new key and manually copy the named ranges associated with

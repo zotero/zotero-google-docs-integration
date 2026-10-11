@@ -349,7 +349,7 @@ Zotero.GoogleDocs.Document = class Document {
 					}
 					// Not first encounter of the same link in the text.
 					else {
-						const isBibl = rangeFields[key][0].name.substr((prefix+key).length+3, 4) == 'BIBL';
+						const isBibl = decodedCodes[key].substr(0, 4) == 'BIBL';
 						if (!isBibl) {
 							// There are multiple links for the same key, which means that citations have been copied
 							// so we need to assign them a new key and manually copy the named ranges associated with
