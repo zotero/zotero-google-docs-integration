@@ -379,6 +379,7 @@ Zotero.GoogleDocs.API = {
 
 	batchUpdateDocument: async function (docId, documentTabId=null, body, browserTab=null, isAuthRetry=false) {
 		var headers = await this.getAuthHeaders(browserTab);
+		headers["Content-Type"] = "application/json";
 		if (documentTabId) {
 			for (let request of body.requests) {
 				request = this._addTabDataToObject(request, documentTabId);
