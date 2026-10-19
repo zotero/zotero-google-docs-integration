@@ -331,18 +331,19 @@ Zotero.GoogleDocs.API = {
 		let document = JSON.parse(xhr.responseText);
 		if (!document.tabs) return document;
 		let documentTab = this._getDocumentTabFromTabs(document.tabs, documentTabId);
-		if (documentTab) {
-			documentTab.documentId = docID;
-			documentTab.tabId = documentTabId;
-			documentTab.revisionId = document.revisionId;
+		if (!documentTab) {
+			throw new Error(`Google Docs tab ${documentTabId} not found in document`);
 		}
+		documentTab.documentId = docID;
+		documentTab.tabId = documentTabId;
+		documentTab.revisionId = document.revisionId;
 		return documentTab;
 	},
 	
 	_getDocumentTabFromTabs: function(tabs, tabId=null) {
 		for (let tab of tabs) {
 			// Return first tab if not specified
-			if (tabId === null || tab.tabProperties.tabId == tabId) {
+			if (!tabId || tab.tabProperties.tabId == tabId) {
 				return tab.documentTab;
 			}
 			if (tab.childTabs) {
